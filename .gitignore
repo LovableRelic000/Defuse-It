@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+package-lock.json.bak
+
+# Expo
+.expo/
+.expo-shared/
+dist/
+web-build/
+
+# Vite / Web builds
+watch-app/dist/
+
+# Android build artifacts and caches
+.gradle/
+build/
+*/build/
+watch-app/android/.gradle/
+watch-app/android/build/
+watch-app/android/app/build/
+local.properties
+*.apk
+*.ap_
+*.aab
+*.dex
+
+# IDE & OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

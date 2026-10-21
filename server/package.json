@@ -1,0 +1,16 @@
+{
+  "name": "defuse-it-server",
+  "version": "1.0.0",
+  "description": "Authoritative Node.js + Socket.io Server for Defuse It! (Galaxy Watch 4 + Expo Go)",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1"
+  }
+}
