@@ -627,7 +627,7 @@ function generateNeedyKnobModule() {
     targetDirection,
     leds: chosenPattern, // { top: [6], bottom: [6] }
     timerSeconds: 35,
-    active: true
+    active: false
   };
 }
 
@@ -655,10 +655,10 @@ function generateNeedyVentCapacitorModule() {
     isQuestion,
     question,
     correctAnswer,
-    capacitorCharge: 20, // 0 to 100
-    thermalLevel: 15, // 0 to 100
+    capacitorCharge: 0, // 0 to 100
+    thermalLevel: 0, // 0 to 100
     timerSeconds: 40,
-    active: true
+    active: false
   };
 }
 
@@ -709,9 +709,9 @@ function generateBomb(difficulty = 'normal') {
     maxStrikes: 3,
     timeRemainingMs: baseTimeSeconds * 1000,
     baseTimeSeconds,
-    status: 'active', // 'active', 'defused', 'exploded'
+    status: 'waiting', // 'waiting', 'active', 'defused', 'exploded'
     difficulty,
-    thermalLevel: 10, // 0 - 100
+    thermalLevel: 0, // 0 - 100
     isLockedThermal: false
   };
 }

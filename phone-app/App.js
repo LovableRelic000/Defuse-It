@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useKeepAwake } from 'expo-keep-awake';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import io from 'socket.io-client';
 import LobbyScreen from './src/screens/LobbyScreen';
 import GameScreen from './src/screens/GameScreen';
@@ -14,10 +15,11 @@ export default function App() {
   const [gameState, setGameState] = useState('lobby'); // 'lobby' or 'playing'
   const [roomCode, setRoomPin] = useState('');
   const [bomb, setBomb] = useState(null);
+  const [clients, setClients] = useState({ watch: false, phone: false });
   const [telemetry, setTelemetry] = useState({
     morseFreq: 3.500,
     rotaryAngle: 0,
-    thermal: 10
+    thermal: 0
   });
   const [isConnecting, setIsConnecting] = useState(false);
   const [socketConnected, setSocketConnected] = useState(false);
@@ -55,17 +57,20 @@ export default function App() {
       socket.on('room:created', (data) => {
         setRoomPin(data.code);
         setBomb(data.bomb);
+        if (data.clients) setClients(data.clients);
         setGameState('playing');
       });
 
       socket.on('room:joined', (data) => {
         setRoomPin(data.code);
         setBomb(data.bomb);
+        if (data.clients) setClients(data.clients);
         setGameState('playing');
       });
 
       socket.on('room:state', (data) => {
         setBomb(data.bomb);
+        if (data.clients) setClients(data.clients);
       });
 
       socket.on('sync:time', (data) => {
@@ -110,6 +115,12 @@ export default function App() {
     }
   };
 
+  const handleStartGame = (options = {}) => {
+    if (socketRef.current) {
+      socketRef.current.emit('start-game', options);
+    }
+  };
+
   const handlePurgeThermal = () => {
     if (socketRef.current) {
       socketRef.current.emit('phone:purge-thermal');
@@ -128,25 +139,30 @@ export default function App() {
     }
     setGameState('lobby');
     setBomb(null);
+    setClients({ watch: false, phone: false });
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar style="light" />
-      {gameState === 'lobby' ? (
-        <LobbyScreen onConnect={connectToServer} isConnecting={isConnecting} />
-      ) : (
-        <GameScreen
-          roomCode={roomCode}
-          bomb={bomb}
-          telemetry={telemetry}
-          onPurgeThermal={handlePurgeThermal}
-          onRestartGame={handleRestartGame}
-          onLeaveRoom={handleLeaveRoom}
-          socketConnected={socketConnected}
-        />
-      )}
-    </View>
+    <SafeAreaProvider>
+      <View style={styles.container}>
+        <StatusBar style="light" translucent backgroundColor="transparent" />
+        {gameState === 'lobby' ? (
+          <LobbyScreen onConnect={connectToServer} isConnecting={isConnecting} />
+        ) : (
+          <GameScreen
+            roomCode={roomCode}
+            bomb={bomb}
+            clients={clients}
+            telemetry={telemetry}
+            onStartGame={handleStartGame}
+            onPurgeThermal={handlePurgeThermal}
+            onRestartGame={handleRestartGame}
+            onLeaveRoom={handleLeaveRoom}
+            socketConnected={socketConnected}
+          />
+        )}
+      </View>
+    </SafeAreaProvider>
   );
 }
 

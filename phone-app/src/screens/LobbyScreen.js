@@ -14,8 +14,10 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function LobbyScreen({ onConnect, isConnecting }) {
+  const insets = useSafeAreaInsets();
   const [serverUrl, setServerUrl] = useState('http://192.168.1.50:3000');
   const [roomPin, setRoomPin] = useState('');
   const [difficulty, setDifficulty] = useState('normal'); // 'facil', 'normal', 'experto'
@@ -71,7 +73,7 @@ export default function LobbyScreen({ onConnect, isConnecting }) {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 20 }]}>
         {/* Brand Banner */}
         <View style={styles.header}>
           <Text style={styles.titleIcon}>💣</Text>

@@ -109,9 +109,9 @@ function startGameLoop(roomCode) {
       return;
     }
 
-    // Tick needy modules
+    // Tick needy modules only if active and watch is connected (prevents instant strikes in solo/test mode)
     room.bomb.modules.forEach(mod => {
-      if (mod.type === 'needy_knob' && mod.active) {
+      if (mod.type === 'needy_knob' && mod.active && room.watchSocketId && !room.testMode) {
         mod.timerSeconds -= (deltaMs / 1000);
         if (mod.timerSeconds <= 0) {
           // Timer expired: if not turned to target, strike!
@@ -128,7 +128,7 @@ function startGameLoop(roomCode) {
         }
       }
 
-      if (mod.type === 'needy_vent_capacitor' && mod.active) {
+      if (mod.type === 'needy_vent_capacitor' && mod.active && room.watchSocketId && !room.testMode) {
         mod.timerSeconds -= (deltaMs / 1000);
         // Capacitor charge increases slowly
         mod.capacitorCharge = Math.min(100, mod.capacitorCharge + (deltaMs / 1000) * 2.5);
@@ -224,7 +224,7 @@ function broadcastState(roomCode) {
 io.on('connection', (socket) => {
   console.log(`[Socket Connected] ID: ${socket.id}`);
 
-  // Create Room
+  // Create Room (Starts in 'waiting' state, does NOT tick down until start-game)
   socket.on('create-room', (data = {}) => {
     const difficulty = data.difficulty || 'normal';
     const code = generateRoomCode();
@@ -236,7 +236,8 @@ io.on('connection', (socket) => {
       hostSocketId: socket.id,
       phoneSocketId: data.role === 'phone' ? socket.id : null,
       watchSocketId: data.role === 'watch' ? socket.id : null,
-      intervalId: null
+      intervalId: null,
+      testMode: false
     };
 
     rooms.set(code, room);
@@ -244,14 +245,42 @@ io.on('connection', (socket) => {
     socket.roomCode = code;
     socket.role = data.role || 'phone';
 
-    console.log(`[Room Created] PIN: ${code} | Difficulty: ${difficulty}`);
+    console.log(`[Room Created] PIN: ${code} | Difficulty: ${difficulty} (Waiting for watch/start)`);
 
     socket.emit('room:created', {
       code,
       bomb,
-      role: socket.role
+      role: socket.role,
+      clients: {
+        watch: false,
+        phone: true
+      }
     });
 
+    broadcastState(code);
+  });
+
+  // Explicit Start Game (Arm Bomb)
+  socket.on('start-game', (data = {}) => {
+    const code = socket.roomCode;
+    const room = rooms.get(code);
+    if (!room || room.bomb.status !== 'waiting') return;
+
+    room.testMode = !!data.testMode;
+    room.bomb.status = 'active';
+
+    // 25-second grace period before activating needy modules
+    setTimeout(() => {
+      if (room.bomb.status === 'active') {
+        room.bomb.modules.forEach(mod => {
+          if (mod.isNeedy) mod.active = true;
+        });
+        broadcastState(code);
+      }
+    }, 25000);
+
+    console.log(`[Game Started] PIN: ${code} | Mode: ${room.testMode ? 'Test (Solo)' : 'Co-op'}`);
+    broadcastState(code);
     startGameLoop(code);
   });
 
@@ -277,7 +306,11 @@ io.on('connection', (socket) => {
     socket.emit('room:joined', {
       code,
       bomb: room.bomb,
-      role
+      role,
+      clients: {
+        watch: !!room.watchSocketId,
+        phone: !!room.phoneSocketId
+      }
     });
 
     broadcastState(code);

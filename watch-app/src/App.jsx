@@ -350,6 +350,25 @@ export default function App() {
         </div>
       )}
 
+      {/* Waiting for Expert to Start Mission Overlay */}
+      {bomb?.status === 'waiting' && (
+        <div className="lockout-overlay" style={{ background: 'rgba(5, 10, 20, 0.95)' }}>
+          <div className="lockout-icon">⌚</div>
+          <div className="lockout-title" style={{ color: 'var(--color-neon-blue)' }}>RELOJ EMPAREJADO</div>
+          <div className="lockout-sub" style={{ margin: '6px 0 10px 0' }}>
+            SALA PIN: <strong>{roomCode}</strong><br />
+            Esperando que el Experto arme la bomba e inicie la partida...
+          </div>
+          <button
+            className="connect-btn"
+            style={{ background: 'var(--color-neon-green)', padding: '5px 14px' }}
+            onClick={() => socketRef.current?.emit('start-game', { testMode: false })}
+          >
+            INICIAR YA
+          </button>
+        </div>
+      )}
+
       {/* Overheat Thermal Lockout Modal */}
       {bomb?.isLockedThermal && (
         <div className="lockout-overlay">
