@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center_horizontal"
+    android:background="@color/bg_black"
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:paddingTop="18dp"
+    android:paddingBottom="16dp">
+
+    <!-- Title -->
+    <TextView
+        android:id="@+id/tvConnectTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="DEFUSE IT!"
+        android:textColor="@color/accent_cyan"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:letterSpacing="0.08" />
+
+    <!-- Server IP Pill -->
+    <TextView
+        android:id="@+id/tvServerIp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text="IP: 10.0.0.34:3000"
+        android:textColor="@color/text_muted"
+        android:textSize="10sp"
+        android:background="@drawable/btn_round_dark"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:paddingTop="2dp"
+        android:paddingBottom="2dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="GIRA EL BISEL PARA EL PIN"
+        android:textColor="@color/text_secondary"
+        android:textSize="8sp"
+        android:letterSpacing="0.05" />
+
+    <!-- 4 Rotary PIN Digit Boxes -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="4dp">
+
+        <TextView
+            android:id="@+id/tvPinDigit0"
+            android:layout_width="32dp"
+            android:layout_height="40dp"
+            android:text="0"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:fontFamily="monospace"
+            android:textColor="@color/accent_cyan"
+            android:background="@drawable/btn_round_cyan"
+            android:gravity="center"
+            android:layout_margin="2dp" />
+
+        <TextView
+            android:id="@+id/tvPinDigit1"
+            android:layout_width="32dp"
+            android:layout_height="40dp"
+            android:text="0"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:fontFamily="monospace"
+            android:textColor="@color/text_primary"
+            android:background="@drawable/btn_round_dark"
+            android:gravity="center"
+            android:layout_margin="2dp" />
+
+        <TextView
+            android:id="@+id/tvPinDigit2"
+            android:layout_width="32dp"
+            android:layout_height="40dp"
+            android:text="0"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:fontFamily="monospace"
+            android:textColor="@color/text_primary"
+            android:background="@drawable/btn_round_dark"
+            android:gravity="center"
+            android:layout_margin="2dp" />
+
+        <TextView
+            android:id="@+id/tvPinDigit3"
+            android:layout_width="32dp"
+            android:layout_height="40dp"
+            android:text="0"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:fontFamily="monospace"
+            android:textColor="@color/text_primary"
+            android:background="@drawable/btn_round_dark"
+            android:gravity="center"
+            android:layout_margin="2dp" />
+
+    </LinearLayout>
+
+    <!-- Navigation & Connect row -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="6dp">
+
+        <Button
+            android:id="@+id/btnPinPrev"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:text="◀"
+            android:textSize="10sp"
+            android:textColor="@color/text_secondary"
+            android:background="@drawable/btn_round_dark"
+            android:padding="0dp" />
+
+        <Button
+            android:id="@+id/btnConnect"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:text="CONECTAR"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:textColor="@color/accent_cyan"
+            android:background="@drawable/btn_round_cyan"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:layout_marginStart="6dp"
+            android:layout_marginEnd="6dp" />
+
+        <Button
+            android:id="@+id/btnPinNext"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:text="▶"
+            android:textSize="10sp"
+            android:textColor="@color/text_secondary"
+            android:background="@drawable/btn_round_dark"
+            android:padding="0dp" />
+
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tvConnectStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="Pulsa Conectar para unirse"
+        android:textColor="@color/text_secondary"
+        android:textSize="9sp" />
+
+</LinearLayout>

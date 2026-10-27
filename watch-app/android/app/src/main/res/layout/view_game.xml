@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center_horizontal"
+    android:background="@color/bg_black"
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:paddingTop="20dp"
+    android:paddingBottom="16dp">
+
+    <!-- Row 1: Big Digital Timer -->
+    <TextView
+        android:id="@+id/tvGameTimer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="05:00.0"
+        android:textColor="@color/warning_yellow"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:fontFamily="monospace"
+        android:letterSpacing="0.08" />
+
+    <!-- Row 2: Strikes + Mode Pill -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="2dp">
+
+        <TextView
+            android:id="@+id/tvGameStrikes"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="[ ] [ ] [ ]"
+            android:textColor="@color/text_muted"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.1" />
+
+        <TextView
+            android:id="@+id/tvBezelMode"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="BISEL: MÓDULOS"
+            android:textColor="@color/accent_cyan"
+            android:textSize="9sp"
+            android:textStyle="bold"
+            android:background="@drawable/badge_bezel_mode"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp" />
+
+    </LinearLayout>
+
+    <!-- Row 3: Module Selector Navigation -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="2dp">
+
+        <Button
+            android:id="@+id/btnNavPrev"
+            android:layout_width="32dp"
+            android:layout_height="28dp"
+            android:text="◀"
+            android:textSize="10sp"
+            android:textColor="@color/text_secondary"
+            android:background="@drawable/btn_round_dark"
+            android:padding="0dp" />
+
+        <TextView
+            android:id="@+id/tvModuleTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="1/5: CABLES"
+            android:textColor="@color/text_primary"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:singleLine="true"
+            android:ellipsize="end"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp" />
+
+        <Button
+            android:id="@+id/btnNavNext"
+            android:layout_width="32dp"
+            android:layout_height="28dp"
+            android:text="▶"
+            android:textSize="10sp"
+            android:textColor="@color/text_secondary"
+            android:background="@drawable/btn_round_dark"
+            android:padding="0dp" />
+
+    </LinearLayout>
+
+    <!-- Main Module Container -->
+    <FrameLayout
+        android:id="@+id/moduleContainer"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="4dp">
+
+    </FrameLayout>
+
+</LinearLayout>
