@@ -105,9 +105,9 @@ export default function LobbyScreen({ onConnect, isConnecting }) {
 
           <View style={styles.diffRow}>
             {[
-              { id: 'facil', label: 'FÁCIL', sub: '3 Módulos' },
-              { id: 'normal', label: 'NORMAL', sub: '5 Módulos' },
-              { id: 'experto', label: 'EXPERTO', sub: '8 Módulos' }
+              { id: 'facil', label: 'FÁCIL', sub: '2 Módulos' },
+              { id: 'normal', label: 'NORMAL', sub: '4 Módulos' },
+              { id: 'experto', label: 'EXPERTO', sub: '6 Módulos' }
             ].map(d => (
               <TouchableOpacity
                 key={d.id}

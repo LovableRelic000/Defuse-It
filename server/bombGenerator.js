@@ -665,9 +665,9 @@ function generateNeedyVentCapacitorModule() {
 // Main Bomb Generator
 function generateBomb(difficulty = 'normal') {
   const edgework = createEdgework();
-  let moduleCount = 5;
-  if (difficulty === 'facil' || difficulty === 'easy') moduleCount = 3;
-  if (difficulty === 'experto' || difficulty === 'expert') moduleCount = 8;
+  let moduleCount = 4;
+  if (difficulty === 'facil' || difficulty === 'easy') moduleCount = 2;
+  if (difficulty === 'experto' || difficulty === 'expert' || difficulty === 'dificil' || difficulty === 'hard') moduleCount = 6;
 
   // Pool of the 6 selected modules (wires, the_button, keypads, simon_says, memory, passwords)
   const regularGenerators = [

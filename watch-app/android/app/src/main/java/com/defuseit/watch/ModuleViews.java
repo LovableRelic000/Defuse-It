@@ -9,6 +9,7 @@ import android.os.Looper;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -119,17 +120,20 @@ public class ModuleViews {
         return scroll;
     }
 
-    // --- 1. WIRES MODULE (VERTICAL WIRES) ---
+    // --- 1. WIRES MODULE (HORIZONTAL WIRES WITH VERTICAL SCISSORS CUT BUTTON) ---
     public static View buildWiresView(Context ctx, JSONObject mod, int selectedWireIndex,
                                       OnWireSelectListener selectListener, OnWireCutListener cutListener) {
         LinearLayout layout = new LinearLayout(ctx);
-        layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setGravity(Gravity.CENTER_HORIZONTAL);
-        layout.setPadding(dpToPx(ctx, 4), dpToPx(ctx, 2), dpToPx(ctx, 4), dpToPx(ctx, 4));
+        layout.setOrientation(LinearLayout.HORIZONTAL);
+        layout.setGravity(Gravity.CENTER);
+        layout.setPadding(dpToPx(ctx, 4), dpToPx(ctx, 2), dpToPx(ctx, 4), dpToPx(ctx, 2));
 
         if (mod.optBoolean("solved")) {
-            layout.addView(createSolvedBadge(ctx));
-            return layout;
+            LinearLayout solvedLayout = new LinearLayout(ctx);
+            solvedLayout.setOrientation(LinearLayout.VERTICAL);
+            solvedLayout.setGravity(Gravity.CENTER);
+            solvedLayout.addView(createSolvedBadge(ctx));
+            return solvedLayout;
         }
 
         JSONArray wires = mod.optJSONArray("wires");
@@ -138,54 +142,46 @@ public class ModuleViews {
         if (wires != null && wires.length() > 0) {
             int count = wires.length();
 
-            // Terminal block top bar
-            View topTerminal = new View(ctx);
-            int wireBarWidth = count * dpToPx(ctx, 22) + dpToPx(ctx, 8);
-            LinearLayout.LayoutParams topTermLp = new LinearLayout.LayoutParams(wireBarWidth, dpToPx(ctx, 5));
-            topTerminal.setLayoutParams(topTermLp);
-            GradientDrawable termG = new GradientDrawable();
-            termG.setShape(GradientDrawable.RECTANGLE);
-            termG.setColor(Color.parseColor("#334155"));
-            termG.setCornerRadius(dpToPx(ctx, 2));
-            topTerminal.setBackground(termG);
-            layout.addView(topTerminal);
+            // Left/Center: Container of horizontal wire rows
+            LinearLayout wiresCol = new LinearLayout(ctx);
+            wiresCol.setOrientation(LinearLayout.VERTICAL);
+            wiresCol.setGravity(Gravity.CENTER_VERTICAL);
+            wiresCol.setPadding(0, 0, dpToPx(ctx, 8), 0);
 
-            // Row containing the vertical wires side-by-side
-            LinearLayout wiresRow = new LinearLayout(ctx);
-            wiresRow.setOrientation(LinearLayout.HORIZONTAL);
-            wiresRow.setGravity(Gravity.CENTER);
-            wiresRow.setPadding(0, dpToPx(ctx, 2), 0, dpToPx(ctx, 2));
+            // Compute wire height based on count so 6 wires fit snugly
+            int wireHeight = count > 4 ? dpToPx(ctx, 8) : dpToPx(ctx, 10);
+            int rowMargin = count > 4 ? dpToPx(ctx, 2) : dpToPx(ctx, 3);
+            int wireWidth = dpToPx(ctx, 88);
 
             for (int i = 0; i < count; i++) {
                 final int wireIdx = i;
                 String colorName = wires.optString(i, "blanco").toLowerCase();
                 boolean isSelected = (wireIdx == selectedWireIndex);
 
-                LinearLayout wireCol = new LinearLayout(ctx);
-                wireCol.setOrientation(LinearLayout.VERTICAL);
-                wireCol.setGravity(Gravity.CENTER_HORIZONTAL);
-                wireCol.setPadding(dpToPx(ctx, 3), 0, dpToPx(ctx, 3), 0);
-                wireCol.setClickable(true);
-                wireCol.setFocusable(true);
-                wireCol.setOnClickListener(v -> {
+                LinearLayout wireRow = new LinearLayout(ctx);
+                wireRow.setOrientation(LinearLayout.HORIZONTAL);
+                wireRow.setGravity(Gravity.CENTER_VERTICAL);
+                wireRow.setPadding(0, rowMargin, 0, rowMargin);
+                wireRow.setClickable(true);
+                wireRow.setFocusable(true);
+                wireRow.setOnClickListener(v -> {
                     if (selectListener != null) selectListener.onSelect(wireIdx);
                 });
 
-                // Top arrow pointer indicator
+                // Pointer Arrow on the left
                 TextView tvPointer = new TextView(ctx);
-                tvPointer.setText(isSelected ? "▼" : " ");
+                tvPointer.setText(isSelected ? "▶" : " ");
                 tvPointer.setTextColor(Color.parseColor("#00E5FF"));
-                tvPointer.setTextSize(9f);
+                tvPointer.setTextSize(10f);
+                tvPointer.setWidth(dpToPx(ctx, 14));
                 tvPointer.setGravity(Gravity.CENTER);
-                tvPointer.setHeight(dpToPx(ctx, 12));
-                wireCol.addView(tvPointer);
+                wireRow.addView(tvPointer);
 
-                // Vertical wire body
-                View wireBody = new View(ctx);
-                int wireWidth = dpToPx(ctx, 14);
-                int wireHeight = dpToPx(ctx, 48);
-                LinearLayout.LayoutParams bodyLp = new LinearLayout.LayoutParams(wireWidth, wireHeight);
-                wireBody.setLayoutParams(bodyLp);
+                // Horizontal wire line
+                View wireLine = new View(ctx);
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(wireWidth, wireHeight);
+                lp.setMargins(dpToPx(ctx, 2), 0, 0, 0);
+                wireLine.setLayoutParams(lp);
 
                 int wireColor = Color.WHITE;
                 if ("rojo".equals(colorName)) wireColor = Color.parseColor("#EF4444");
@@ -193,51 +189,57 @@ public class ModuleViews {
                 else if ("amarillo".equals(colorName)) wireColor = Color.parseColor("#FACC15");
                 else if ("negro".equals(colorName)) wireColor = Color.parseColor("#1E293B");
 
-                GradientDrawable wireDrawable = new GradientDrawable();
-                wireDrawable.setShape(GradientDrawable.RECTANGLE);
-                wireDrawable.setColor(wireColor);
-                wireDrawable.setCornerRadius(dpToPx(ctx, 7));
+                GradientDrawable wireG = new GradientDrawable();
+                wireG.setShape(GradientDrawable.RECTANGLE);
+                wireG.setColor(wireColor);
+                wireG.setCornerRadius(dpToPx(ctx, 5));
 
                 if (isSelected) {
-                    wireDrawable.setStroke(dpToPx(ctx, 2), Color.parseColor("#00E5FF"));
+                    wireG.setStroke(dpToPx(ctx, 2), Color.parseColor("#00E5FF"));
                 } else {
-                    wireDrawable.setStroke(1, Color.parseColor("#475569"));
+                    wireG.setStroke(1, Color.parseColor("#475569"));
                 }
-                wireBody.setBackground(wireDrawable);
-                wireCol.addView(wireBody);
+                wireLine.setBackground(wireG);
+                wireRow.addView(wireLine);
 
-                wiresRow.addView(wireCol);
+                wiresCol.addView(wireRow);
             }
-            layout.addView(wiresRow);
+            layout.addView(wiresCol);
 
-            // Terminal block bottom bar
-            View botTerminal = new View(ctx);
-            LinearLayout.LayoutParams botTermLp = new LinearLayout.LayoutParams(wireBarWidth, dpToPx(ctx, 5));
-            botTerminal.setLayoutParams(botTermLp);
-            botTerminal.setBackground(termG);
-            layout.addView(botTerminal);
+            // Right: Vertical Red Cut Button (Capsule) with rotated scissors icon inside
+            FrameLayout btnCut = new FrameLayout(ctx);
+            btnCut.setBackgroundResource(R.drawable.btn_round_red);
+            btnCut.setClickable(true);
+            btnCut.setFocusable(true);
+
+            int totalColHeight = count * (wireHeight + rowMargin * 2);
+            int btnHeight = Math.max(totalColHeight, dpToPx(ctx, 48));
+            int btnWidth = dpToPx(ctx, 30);
+
+            LinearLayout.LayoutParams btnLp = new LinearLayout.LayoutParams(btnWidth, btnHeight);
+            btnCut.setLayoutParams(btnLp);
+
+            TextView tvScissors = new TextView(ctx);
+            tvScissors.setText("✂");
+            tvScissors.setTextSize(18f);
+            tvScissors.setTextColor(Color.WHITE);
+            tvScissors.setGravity(Gravity.CENTER);
+            // Rotate scissors text so it points vertically
+            tvScissors.setRotation(90f);
+
+            FrameLayout.LayoutParams scisLp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            );
+            scisLp.gravity = Gravity.CENTER;
+            tvScissors.setLayoutParams(scisLp);
+            btnCut.addView(tvScissors);
+
+            btnCut.setOnClickListener(v -> {
+                if (cutListener != null) cutListener.onCut(selectedWireIndex);
+            });
+            layout.addView(btnCut);
         }
-
-        // Visible, prominent "✂ CORTAR CABLE" button
-        TextView btnCut = new TextView(ctx);
-        btnCut.setText("✂ CORTAR CABLE");
-        btnCut.setTextSize(11f);
-        btnCut.setTypeface(Typeface.DEFAULT_BOLD);
-        btnCut.setTextColor(Color.WHITE);
-        btnCut.setGravity(Gravity.CENTER);
-        btnCut.setBackgroundResource(R.drawable.btn_round_red);
-        btnCut.setClickable(true);
-        btnCut.setFocusable(true);
-
-        LinearLayout.LayoutParams btnLp = new LinearLayout.LayoutParams(
-            dpToPx(ctx, 136), dpToPx(ctx, 28)
-        );
-        btnLp.setMargins(0, dpToPx(ctx, 6), 0, 0);
-        btnCut.setLayoutParams(btnLp);
-        btnCut.setOnClickListener(v -> {
-            if (cutListener != null) cutListener.onCut(selectedWireIndex);
-        });
-        layout.addView(btnCut);
 
         return layout;
     }

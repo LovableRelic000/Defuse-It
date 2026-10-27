@@ -52,7 +52,7 @@ El servidor gestiona las salas por PIN de 4 dígitos, el reloj global que se ace
    - En Android, escanea el código QR que aparece en la terminal (o presiona `a` si tienes un dispositivo conectado). En iOS, escanea con la app de Cámara.
 3. **En la pantalla de inicio de la app:**
    - Ingresa o confirma la URL del servidor (ej. `http://192.168.1.50:3000`).
-   - Elige **"CREAR SALA"** (selecciona dificultad: Fácil 3 módulos, Normal 5 módulos, Experto 8 módulos) o ingresa un PIN existente.
+   - Elige **"CREAR SALA"** (selecciona dificultad: Fácil 2 módulos, Normal 4 módulos, Experto 6 módulos) o ingresa un PIN existente.
    - Accederás a la **Consola de Telemetría en Vivo** (Osciloscopio, Matriz de LEDs de Perillas, Termómetro y Purga Remota) y al **Manual Interactivo v1-es**.
 
 ---
