@@ -146,12 +146,12 @@ public class ModuleViews {
             LinearLayout wiresCol = new LinearLayout(ctx);
             wiresCol.setOrientation(LinearLayout.VERTICAL);
             wiresCol.setGravity(Gravity.CENTER_VERTICAL);
-            wiresCol.setPadding(0, 0, dpToPx(ctx, 8), 0);
+            wiresCol.setPadding(0, 0, dpToPx(ctx, 6), 0);
 
-            // Compute wire height based on count so 6 wires fit snugly
-            int wireHeight = count > 4 ? dpToPx(ctx, 8) : dpToPx(ctx, 10);
-            int rowMargin = count > 4 ? dpToPx(ctx, 2) : dpToPx(ctx, 3);
-            int wireWidth = dpToPx(ctx, 88);
+            // Compute compact wire height and row margins so up to 6 wires stay far from the circular fuse
+            int wireHeight = count > 4 ? dpToPx(ctx, 6) : dpToPx(ctx, 8);
+            int rowMargin = count > 4 ? dpToPx(ctx, 1) : dpToPx(ctx, 2);
+            int wireWidth = count > 4 ? dpToPx(ctx, 62) : dpToPx(ctx, 70);
 
             for (int i = 0; i < count; i++) {
                 final int wireIdx = i;
@@ -172,8 +172,8 @@ public class ModuleViews {
                 TextView tvPointer = new TextView(ctx);
                 tvPointer.setText(isSelected ? "▶" : " ");
                 tvPointer.setTextColor(Color.parseColor("#00E5FF"));
-                tvPointer.setTextSize(10f);
-                tvPointer.setWidth(dpToPx(ctx, 14));
+                tvPointer.setTextSize(9f);
+                tvPointer.setWidth(dpToPx(ctx, 10));
                 tvPointer.setGravity(Gravity.CENTER);
                 wireRow.addView(tvPointer);
 
@@ -192,7 +192,7 @@ public class ModuleViews {
                 GradientDrawable wireG = new GradientDrawable();
                 wireG.setShape(GradientDrawable.RECTANGLE);
                 wireG.setColor(wireColor);
-                wireG.setCornerRadius(dpToPx(ctx, 5));
+                wireG.setCornerRadius(dpToPx(ctx, 3));
 
                 if (isSelected) {
                     wireG.setStroke(dpToPx(ctx, 2), Color.parseColor("#00E5FF"));
@@ -206,31 +206,30 @@ public class ModuleViews {
             }
             layout.addView(wiresCol);
 
-            // Right: Vertical Red Cut Button (Capsule) with rotated scissors icon inside
+            // Right: Compact Vertical Red Cut Button (Capsule) with scissors centered
             FrameLayout btnCut = new FrameLayout(ctx);
             btnCut.setBackgroundResource(R.drawable.btn_round_red);
             btnCut.setClickable(true);
             btnCut.setFocusable(true);
 
             int totalColHeight = count * (wireHeight + rowMargin * 2);
-            int btnHeight = Math.max(totalColHeight, dpToPx(ctx, 48));
-            int btnWidth = dpToPx(ctx, 30);
+            int btnHeight = Math.max(totalColHeight, dpToPx(ctx, 42));
+            int btnWidth = dpToPx(ctx, 24);
 
             LinearLayout.LayoutParams btnLp = new LinearLayout.LayoutParams(btnWidth, btnHeight);
             btnCut.setLayoutParams(btnLp);
 
+            // Perfect square TextView to guarantee rotation stays exactly centered without offset
             TextView tvScissors = new TextView(ctx);
             tvScissors.setText("✂");
-            tvScissors.setTextSize(18f);
+            tvScissors.setTextSize(13f);
             tvScissors.setTextColor(Color.WHITE);
+            tvScissors.setIncludeFontPadding(false);
             tvScissors.setGravity(Gravity.CENTER);
-            // Rotate scissors text so it points vertically
             tvScissors.setRotation(90f);
 
-            FrameLayout.LayoutParams scisLp = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-            );
+            int scisBox = dpToPx(ctx, 20);
+            FrameLayout.LayoutParams scisLp = new FrameLayout.LayoutParams(scisBox, scisBox);
             scisLp.gravity = Gravity.CENTER;
             tvScissors.setLayoutParams(scisLp);
             btnCut.addView(tvScissors);
