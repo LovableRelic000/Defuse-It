@@ -55,17 +55,11 @@ public class ModuleViews {
 
         if (edgework != null) {
             String serial = edgework.optString("serialNumber", "------");
-            boolean hasVowel = edgework.optBoolean("hasVowel", false);
-            boolean isOdd = edgework.optBoolean("isLastDigitOdd", false);
 
             TextView tvSerial = new TextView(ctx);
-            tvSerial.setText(String.format("SERIAL: %s\n(%s | %s)",
-                serial,
-                hasVowel ? "CON VOCAL" : "SIN VOCAL",
-                isOdd ? "ÚLT. IMPAR" : "ÚLT. PAR"
-            ));
+            tvSerial.setText("SERIAL: " + serial);
             tvSerial.setTextColor(Color.parseColor("#FBBF24"));
-            tvSerial.setTextSize(12f);
+            tvSerial.setTextSize(14f);
             tvSerial.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
             tvSerial.setGravity(Gravity.CENTER);
             tvSerial.setPadding(0, dpToPx(ctx, 4), 0, dpToPx(ctx, 4));
@@ -125,7 +119,7 @@ public class ModuleViews {
         return scroll;
     }
 
-    // --- 1. WIRES MODULE ---
+    // --- 1. WIRES MODULE (VERTICAL WIRES) ---
     public static View buildWiresView(Context ctx, JSONObject mod, int selectedWireIndex,
                                       OnWireSelectListener selectListener, OnWireCutListener cutListener) {
         LinearLayout layout = new LinearLayout(ctx);
@@ -141,65 +135,93 @@ public class ModuleViews {
         JSONArray wires = mod.optJSONArray("wires");
         if (wires == null) wires = mod.optJSONArray("colors");
 
-        if (wires != null) {
-            for (int i = 0; i < wires.length(); i++) {
+        if (wires != null && wires.length() > 0) {
+            int count = wires.length();
+
+            // Terminal block top bar
+            View topTerminal = new View(ctx);
+            int wireBarWidth = count * dpToPx(ctx, 22) + dpToPx(ctx, 8);
+            LinearLayout.LayoutParams topTermLp = new LinearLayout.LayoutParams(wireBarWidth, dpToPx(ctx, 5));
+            topTerminal.setLayoutParams(topTermLp);
+            GradientDrawable termG = new GradientDrawable();
+            termG.setShape(GradientDrawable.RECTANGLE);
+            termG.setColor(Color.parseColor("#334155"));
+            termG.setCornerRadius(dpToPx(ctx, 2));
+            topTerminal.setBackground(termG);
+            layout.addView(topTerminal);
+
+            // Row containing the vertical wires side-by-side
+            LinearLayout wiresRow = new LinearLayout(ctx);
+            wiresRow.setOrientation(LinearLayout.HORIZONTAL);
+            wiresRow.setGravity(Gravity.CENTER);
+            wiresRow.setPadding(0, dpToPx(ctx, 2), 0, dpToPx(ctx, 2));
+
+            for (int i = 0; i < count; i++) {
                 final int wireIdx = i;
                 String colorName = wires.optString(i, "blanco").toLowerCase();
+                boolean isSelected = (wireIdx == selectedWireIndex);
 
-                LinearLayout wireRow = new LinearLayout(ctx);
-                wireRow.setOrientation(LinearLayout.HORIZONTAL);
-                wireRow.setGravity(Gravity.CENTER_VERTICAL);
-                wireRow.setPadding(dpToPx(ctx, 6), dpToPx(ctx, 2), dpToPx(ctx, 6), dpToPx(ctx, 2));
-                wireRow.setClickable(true);
-                wireRow.setFocusable(true);
-                wireRow.setOnClickListener(v -> {
+                LinearLayout wireCol = new LinearLayout(ctx);
+                wireCol.setOrientation(LinearLayout.VERTICAL);
+                wireCol.setGravity(Gravity.CENTER_HORIZONTAL);
+                wireCol.setPadding(dpToPx(ctx, 3), 0, dpToPx(ctx, 3), 0);
+                wireCol.setClickable(true);
+                wireCol.setFocusable(true);
+                wireCol.setOnClickListener(v -> {
                     if (selectListener != null) selectListener.onSelect(wireIdx);
                 });
 
-                // Pointer Arrow
+                // Top arrow pointer indicator
                 TextView tvPointer = new TextView(ctx);
-                tvPointer.setText(wireIdx == selectedWireIndex ? "▶" : "  ");
+                tvPointer.setText(isSelected ? "▼" : " ");
                 tvPointer.setTextColor(Color.parseColor("#00E5FF"));
-                tvPointer.setTextSize(10f);
-                tvPointer.setWidth(dpToPx(ctx, 16));
-                wireRow.addView(tvPointer);
+                tvPointer.setTextSize(9f);
+                tvPointer.setGravity(Gravity.CENTER);
+                tvPointer.setHeight(dpToPx(ctx, 12));
+                wireCol.addView(tvPointer);
 
-                // Thick insulated colored wire line
-                View wireLine = new View(ctx);
-                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dpToPx(ctx, 74), dpToPx(ctx, 8));
-                lp.setMargins(dpToPx(ctx, 4), 0, dpToPx(ctx, 6), 0);
-                wireLine.setLayoutParams(lp);
+                // Vertical wire body
+                View wireBody = new View(ctx);
+                int wireWidth = dpToPx(ctx, 14);
+                int wireHeight = dpToPx(ctx, 48);
+                LinearLayout.LayoutParams bodyLp = new LinearLayout.LayoutParams(wireWidth, wireHeight);
+                wireBody.setLayoutParams(bodyLp);
 
                 int wireColor = Color.WHITE;
                 if ("rojo".equals(colorName)) wireColor = Color.parseColor("#EF4444");
                 else if ("azul".equals(colorName)) wireColor = Color.parseColor("#3B82F6");
                 else if ("amarillo".equals(colorName)) wireColor = Color.parseColor("#FACC15");
-                else if ("negro".equals(colorName)) wireColor = Color.parseColor("#475569");
+                else if ("negro".equals(colorName)) wireColor = Color.parseColor("#1E293B");
 
-                GradientDrawable wireG = new GradientDrawable();
-                wireG.setShape(GradientDrawable.RECTANGLE);
-                wireG.setColor(wireColor);
-                wireG.setCornerRadius(dpToPx(ctx, 4));
-                wireG.setStroke(1, Color.parseColor("#64748B"));
-                wireLine.setBackground(wireG);
-                wireRow.addView(wireLine);
+                GradientDrawable wireDrawable = new GradientDrawable();
+                wireDrawable.setShape(GradientDrawable.RECTANGLE);
+                wireDrawable.setColor(wireColor);
+                wireDrawable.setCornerRadius(dpToPx(ctx, 7));
 
-                // Wire text label
-                TextView tvLabel = new TextView(ctx);
-                tvLabel.setText(String.format(Locale.getDefault(), "#%d %s", wireIdx + 1, colorName.toUpperCase()));
-                tvLabel.setTextColor(wireIdx == selectedWireIndex ? Color.parseColor("#00E5FF") : Color.parseColor("#94A3B8"));
-                tvLabel.setTextSize(9f);
-                tvLabel.setTypeface(wireIdx == selectedWireIndex ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
-                wireRow.addView(tvLabel);
+                if (isSelected) {
+                    wireDrawable.setStroke(dpToPx(ctx, 2), Color.parseColor("#00E5FF"));
+                } else {
+                    wireDrawable.setStroke(1, Color.parseColor("#475569"));
+                }
+                wireBody.setBackground(wireDrawable);
+                wireCol.addView(wireBody);
 
-                layout.addView(wireRow);
+                wiresRow.addView(wireCol);
             }
+            layout.addView(wiresRow);
+
+            // Terminal block bottom bar
+            View botTerminal = new View(ctx);
+            LinearLayout.LayoutParams botTermLp = new LinearLayout.LayoutParams(wireBarWidth, dpToPx(ctx, 5));
+            botTerminal.setLayoutParams(botTermLp);
+            botTerminal.setBackground(termG);
+            layout.addView(botTerminal);
         }
 
-        // Visible, properly sized "CORTAR CABLE" button
+        // Visible, prominent "✂ CORTAR CABLE" button
         TextView btnCut = new TextView(ctx);
-        btnCut.setText("✂ CORTAR SELECCIÓN");
-        btnCut.setTextSize(10f);
+        btnCut.setText("✂ CORTAR CABLE");
+        btnCut.setTextSize(11f);
         btnCut.setTypeface(Typeface.DEFAULT_BOLD);
         btnCut.setTextColor(Color.WHITE);
         btnCut.setGravity(Gravity.CENTER);
@@ -208,9 +230,9 @@ public class ModuleViews {
         btnCut.setFocusable(true);
 
         LinearLayout.LayoutParams btnLp = new LinearLayout.LayoutParams(
-            dpToPx(ctx, 140), dpToPx(ctx, 28)
+            dpToPx(ctx, 136), dpToPx(ctx, 28)
         );
-        btnLp.setMargins(0, dpToPx(ctx, 4), 0, 0);
+        btnLp.setMargins(0, dpToPx(ctx, 6), 0, 0);
         btnCut.setLayoutParams(btnLp);
         btnCut.setOnClickListener(v -> {
             if (cutListener != null) cutListener.onCut(selectedWireIndex);
@@ -420,16 +442,17 @@ public class ModuleViews {
         int stage = mod.optInt("currentStage", 1);
         int total = mod.optJSONArray("sequence") != null ? mod.optJSONArray("sequence").length() : 3;
 
-        // Serial helper banner so the player knows what to report to the expert!
+        // Serial helper banner so the player knows what to report to the expert
         String serialText = "";
         if (edgework != null) {
             String sNum = edgework.optString("serialNumber", "");
-            boolean hasV = edgework.optBoolean("hasVowel", false);
-            serialText = String.format("SERIAL: %s (%s)", sNum, hasV ? "VOCAL" : "SIN VOCAL");
+            if (!sNum.isEmpty()) {
+                serialText = " | SERIAL: " + sNum;
+            }
         }
 
         TextView tvHeader = new TextView(ctx);
-        tvHeader.setText(String.format("ETAPA %d / %d%s", stage, total, serialText.isEmpty() ? "" : "\n" + serialText));
+        tvHeader.setText(String.format("ETAPA %d / %d%s", stage, total, serialText));
         tvHeader.setTextColor(Color.parseColor("#00E5FF"));
         tvHeader.setTextSize(9f);
         tvHeader.setTypeface(Typeface.DEFAULT_BOLD);
