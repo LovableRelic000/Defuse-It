@@ -96,6 +96,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        stopSimonLoop();
         if (mSocket != null) {
             mSocket.disconnect();
             mSocket.off();
@@ -134,6 +135,7 @@ public class MainActivity extends AppCompatActivity {
         if (currentScreen != ScreenState.GAME) return;
 
         if (!bezelModeAction) {
+            stopSimonLoop();
             // MÓDULOS MODE: Cycle between Edgework (-1) and modules (0 to N-1)
             int totalViews = (modulesArray != null ? modulesArray.length() : 0) + 1; // +1 for Edgework
             if (totalViews <= 0) return;
@@ -163,8 +165,9 @@ public class MainActivity extends AppCompatActivity {
 
         switch (type) {
             case "wires": {
-                JSONArray colors = mod.optJSONArray("colors");
-                int count = colors != null ? colors.length() : 1;
+                JSONArray wires = mod.optJSONArray("wires");
+                if (wires == null) wires = mod.optJSONArray("colors");
+                int count = wires != null ? wires.length() : 1;
                 selectedWireIndex = (selectedWireIndex + direction + count) % count;
                 renderActiveModuleView();
                 break;
@@ -197,9 +200,9 @@ public class MainActivity extends AppCompatActivity {
 
         TextView tvServerIp = v.findViewById(R.id.tvServerIp);
         TextView tvStatus = v.findViewById(R.id.tvConnectStatus);
-        Button btnConnect = v.findViewById(R.id.btnConnect);
-        Button btnPrev = v.findViewById(R.id.btnPinPrev);
-        Button btnNext = v.findViewById(R.id.btnPinNext);
+        View btnConnect = v.findViewById(R.id.btnConnect);
+        View btnPrev = v.findViewById(R.id.btnPinPrev);
+        View btnNext = v.findViewById(R.id.btnPinNext);
 
         tvPinDigits[0] = v.findViewById(R.id.tvPinDigit0);
         tvPinDigits[1] = v.findViewById(R.id.tvPinDigit1);
@@ -403,8 +406,8 @@ public class MainActivity extends AppCompatActivity {
 
         TextView tvPin = v.findViewById(R.id.tvLobbyPin);
         TextView tvStatus = v.findViewById(R.id.tvLobbyStatus);
-        Button btnStart = v.findViewById(R.id.btnLobbyStart);
-        Button btnDisconnect = v.findViewById(R.id.btnLobbyDisconnect);
+        View btnStart = v.findViewById(R.id.btnLobbyStart);
+        View btnDisconnect = v.findViewById(R.id.btnLobbyDisconnect);
 
         tvPin.setText("PIN: " + currentPin);
         tvStatus.setText("Reloj sincronizado. Pulsa abajo para iniciar o espera al teléfono.");
@@ -446,6 +449,7 @@ public class MainActivity extends AppCompatActivity {
 
         // Prev / Next Module buttons
         v.findViewById(R.id.btnNavPrev).setOnClickListener(view -> {
+            stopSimonLoop();
             int total = (modulesArray != null ? modulesArray.length() : 0) + 1;
             int mapped = (currentModuleIndex + 1 - 1 + total) % total;
             currentModuleIndex = mapped - 1;
@@ -455,6 +459,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         v.findViewById(R.id.btnNavNext).setOnClickListener(view -> {
+            stopSimonLoop();
             int total = (modulesArray != null ? modulesArray.length() : 0) + 1;
             int mapped = (currentModuleIndex + 1 + 1) % total;
             currentModuleIndex = mapped - 1;
@@ -471,10 +476,10 @@ public class MainActivity extends AppCompatActivity {
     private void updateBezelModeBadge() {
         if (tvBezelMode == null) return;
         if (bezelModeAction) {
-            tvBezelMode.setText("BISEL: ACCIÓN");
+            tvBezelMode.setText("⚙ ACCIÓN");
             tvBezelMode.setTextColor(Color.parseColor("#FBBF24")); // Amber
         } else {
-            tvBezelMode.setText("BISEL: MÓDULOS");
+            tvBezelMode.setText("⇄ MÓDULOS");
             tvBezelMode.setTextColor(Color.parseColor("#00E5FF")); // Cyan
         }
     }
@@ -540,12 +545,67 @@ public class MainActivity extends AppCompatActivity {
         return null;
     }
 
+    // --- SIMON SAYS FLASH SEQUENCE LOOP ---
+    private final Handler simonHandler = new Handler(Looper.getMainLooper());
+    private Runnable simonFlashRunnable = null;
+    private String currentSimonFlashColor = null;
+
+    private void stopSimonLoop() {
+        if (simonFlashRunnable != null) {
+            simonHandler.removeCallbacks(simonFlashRunnable);
+            simonFlashRunnable = null;
+        }
+        currentSimonFlashColor = null;
+    }
+
+    private void startSimonLoop(JSONObject mod) {
+        if (simonFlashRunnable != null) return;
+        final JSONArray seq = mod.optJSONArray("sequence");
+        if (seq == null || seq.length() == 0) return;
+
+        simonFlashRunnable = new Runnable() {
+            int stepIndex = 0;
+            boolean isOn = false;
+
+            @Override
+            public void run() {
+                JSONObject activeMod = getActiveModule();
+                if (activeMod == null || !"simon_says".equals(activeMod.optString("type")) || activeMod.optBoolean("solved")) {
+                    stopSimonLoop();
+                    return;
+                }
+
+                int currentStage = activeMod.optInt("currentStage", 1);
+                int limit = Math.min(currentStage, seq.length());
+
+                if (isOn) {
+                    currentSimonFlashColor = null;
+                    isOn = false;
+                    stepIndex++;
+                    renderActiveModuleView();
+                    long delay = (stepIndex >= limit) ? 1400 : 250;
+                    if (stepIndex >= limit) {
+                        stepIndex = 0;
+                    }
+                    simonHandler.postDelayed(this, delay);
+                } else {
+                    currentSimonFlashColor = seq.optString(stepIndex, null);
+                    isOn = true;
+                    renderActiveModuleView();
+                    simonHandler.postDelayed(this, 500);
+                }
+            }
+        };
+        simonHandler.postDelayed(simonFlashRunnable, 400);
+    }
+
     // --- RENDER ACTIVE MODULE IN CONTAINER (CORE 6 MODULES) ---
     private void renderActiveModuleView() {
         if (moduleContainer == null) return;
         moduleContainer.removeAllViews();
 
         if (currentModuleIndex == -1) {
+            stopSimonLoop();
             View v = ModuleViews.buildEdgeworkView(this, edgeworkObj);
             moduleContainer.addView(v);
             return;
@@ -555,12 +615,22 @@ public class MainActivity extends AppCompatActivity {
         if (mod == null) return;
 
         String type = mod.optString("type", "");
+        if (!"simon_says".equals(type)) {
+            stopSimonLoop();
+        }
 
         switch (type) {
             case "wires": {
-                View v = ModuleViews.buildWiresView(this, mod, selectedWireIndex, wireIndex -> {
-                    emitModuleAction("action:wires", "wireIndex", wireIndex);
-                });
+                View v = ModuleViews.buildWiresView(this, mod, selectedWireIndex,
+                    wireIndex -> {
+                        selectedWireIndex = wireIndex;
+                        renderActiveModuleView();
+                        triggerRotaryClickHaptic();
+                    },
+                    wireIndex -> {
+                        emitModuleAction("action:wires", "wireIndex", wireIndex);
+                    }
+                );
                 moduleContainer.addView(v);
                 break;
             }
@@ -584,7 +654,8 @@ public class MainActivity extends AppCompatActivity {
                 break;
             }
             case "simon_says": {
-                View v = ModuleViews.buildSimonView(this, mod, null, color -> {
+                startSimonLoop(mod);
+                View v = ModuleViews.buildSimonView(this, mod, edgeworkObj, currentSimonFlashColor, color -> {
                     emitModuleAction("action:simon", "color", color);
                 });
                 moduleContainer.addView(v);
@@ -603,9 +674,16 @@ public class MainActivity extends AppCompatActivity {
                 break;
             }
             case "passwords": {
-                View v = ModuleViews.buildPasswordsView(this, mod, passwordActiveCol, passwordColIndices, word -> {
-                    emitModuleAction("action:passwords", "word", word);
-                });
+                View v = ModuleViews.buildPasswordsView(this, mod, passwordActiveCol, passwordColIndices,
+                    colIdx -> {
+                        passwordActiveCol = colIdx;
+                        renderActiveModuleView();
+                        triggerRotaryClickHaptic();
+                    },
+                    word -> {
+                        emitModuleAction("action:passwords", "word", word);
+                    }
+                );
                 moduleContainer.addView(v);
                 break;
             }
@@ -624,6 +702,7 @@ public class MainActivity extends AppCompatActivity {
 
     // --- SCREEN: EXPLODED ---
     private void showExplodedScreen(String reason) {
+        stopSimonLoop();
         currentScreen = ScreenState.EXPLODED;
         triggerLongDetonationHaptic();
         rootContainer.removeAllViews();
@@ -647,6 +726,7 @@ public class MainActivity extends AppCompatActivity {
 
     // --- SCREEN: DEFUSED (VICTORY) ---
     private void showDefusedScreen() {
+        stopSimonLoop();
         currentScreen = ScreenState.DEFUSED;
         triggerVictoryHaptic();
         rootContainer.removeAllViews();

@@ -227,7 +227,7 @@ io.on('connection', (socket) => {
   // Create Room (Starts in 'waiting' state, does NOT tick down until start-game)
   socket.on('create-room', (data = {}) => {
     const difficulty = data.difficulty || 'normal';
-    const code = generateRoomCode();
+    const code = (data.code && data.code.length === 4) ? data.code : generateRoomCode();
     const bomb = generateBomb(difficulty);
 
     const room = {

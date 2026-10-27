@@ -1,4 +1,4 @@
-// src/components/InteractiveManual.js - Complete Spanish Defusal Manual v1-es
+// src/components/InteractiveManual.js - Core Spanish Defusal Manual v1-es (6 Modules)
 import React, { useState } from 'react';
 import {
   View,
@@ -9,13 +9,9 @@ import {
   TextInput
 } from 'react-native';
 import {
-  MORSE_TABLE,
   PASSWORD_WORDS,
   KEYPAD_COLUMNS,
-  WHOS_ON_FIRST_POSITIONS,
-  WHOS_ON_FIRST_LISTS,
-  SIMON_TABLES,
-  KNOB_MANUAL_PATTERNS
+  SIMON_TABLES
 } from '../utils/manualData';
 
 const MODULE_TABS = [
@@ -23,12 +19,8 @@ const MODULE_TABS = [
   { key: 'the_button', label: '2. El Botón' },
   { key: 'keypads', label: '3. Teclados' },
   { key: 'simon_says', label: '4. Simón Dice' },
-  { key: 'whos_on_first', label: '5. ¿Quién va 1º?' },
-  { key: 'memory', label: '6. Memoria' },
-  { key: 'morse_code', label: '7. Cód. Morse' },
-  { key: 'passwords', label: '8. Contraseñas' },
-  { key: 'needy_knob', label: '9. Perillas' },
-  { key: 'needy_vent', label: '10. Gas/Cond.' },
+  { key: 'memory', label: '5. Memoria' },
+  { key: 'passwords', label: '6. Contraseñas' },
   { key: 'appendices', label: 'Apéndices' }
 ];
 
@@ -38,13 +30,6 @@ export default function InteractiveManual() {
   // Simon Says interactive state
   const [simonHasVowel, setSimonHasVowel] = useState(true);
   const [simonStrikes, setSimonStrikes] = useState(0);
-
-  // Who's on first search
-  const [wofDisplayQuery, setWofDisplayQuery] = useState('');
-  const [wofButtonQuery, setWofButtonQuery] = useState('');
-
-  // Morse search
-  const [morseSearch, setMorseSearch] = useState('');
 
   // Password column filters
   const [passCol1, setPassCol1] = useState('');
@@ -154,126 +139,71 @@ export default function InteractiveManual() {
         );
 
       case 'simon_says': {
-        const mappingTable = simonHasVowel
-          ? (simonStrikes === 0 ? SIMON_TABLES.vowel.strikes0 :
-             simonStrikes === 1 ? SIMON_TABLES.vowel.strikes1 : SIMON_TABLES.vowel.strikes2)
-          : (simonStrikes === 0 ? SIMON_TABLES.noVowel.strikes0 :
-             simonStrikes === 1 ? SIMON_TABLES.noVowel.strikes1 : SIMON_TABLES.noVowel.strikes2);
+        const tableGroup = simonHasVowel ? SIMON_TABLES.vowel : SIMON_TABLES.noVowel;
+        const currentMapping = simonStrikes === 0 ? tableGroup.strikes0 :
+                               simonStrikes === 1 ? tableGroup.strikes1 : tableGroup.strikes2;
 
         return (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>MÓDULO 4: SIMÓN DICE (CALCULADORA)</Text>
+            <Text style={styles.sectionTitle}>MÓDULO 4: SIMÓN DICE</Text>
             <Text style={styles.sectionSubtitle}>
-              Selecciona si el Serial tiene vocal y el número de fallos para ver la respuesta exacta.
+              Consulta la tabla según si el número de serie tiene vocal y el número actual de fallos de la bomba.
             </Text>
 
-            {/* Vocal Switch */}
-            <View style={styles.calcControlRow}>
-              <Text style={styles.calcLabel}>¿Vocal en el Serial?</Text>
-              <View style={styles.toggleRow}>
-                <TouchableOpacity
-                  style={[styles.toggleBtn, simonHasVowel && styles.toggleBtnActive]}
-                  onPress={() => setSimonHasVowel(true)}
-                >
-                  <Text style={[styles.toggleBtnText, simonHasVowel && styles.toggleBtnTextActive]}>SÍ (Vocal)</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.toggleBtn, !simonHasVowel && styles.toggleBtnActive]}
-                  onPress={() => setSimonHasVowel(false)}
-                >
-                  <Text style={[styles.toggleBtnText, !simonHasVowel && styles.toggleBtnTextActive]}>NO (Sin Vocal)</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Strikes Switch */}
-            <View style={styles.calcControlRow}>
-              <Text style={styles.calcLabel}>Fallos en la Bomba:</Text>
-              <View style={styles.toggleRow}>
-                {[0, 1, 2].map(st => (
+            {/* Quick Filter Switchers */}
+            <View style={styles.interactiveFilterRow}>
+              <View style={styles.filterGroup}>
+                <Text style={styles.filterLabel}>¿SERIAL CON VOCAL?</Text>
+                <View style={styles.btnRow}>
                   <TouchableOpacity
-                    key={st}
-                    style={[styles.toggleBtn, simonStrikes === st && styles.toggleBtnActive]}
-                    onPress={() => setSimonStrikes(st)}
+                    style={[styles.toggleBtn, simonHasVowel && styles.toggleBtnActive]}
+                    onPress={() => setSimonHasVowel(true)}
                   >
-                    <Text style={[styles.toggleBtnText, simonStrikes === st && styles.toggleBtnTextActive]}>
-                      {st} {st === 1 ? 'Fallo' : 'Fallos'}
-                    </Text>
+                    <Text style={[styles.toggleBtnText, simonHasVowel && styles.toggleBtnTextActive]}>SÍ (Vocal)</Text>
                   </TouchableOpacity>
-                ))}
+                  <TouchableOpacity
+                    style={[styles.toggleBtn, !simonHasVowel && styles.toggleBtnActive]}
+                    onPress={() => setSimonHasVowel(false)}
+                  >
+                    <Text style={[styles.toggleBtnText, !simonHasVowel && styles.toggleBtnTextActive]}>NO</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={styles.filterGroup}>
+                <Text style={styles.filterLabel}>FALLOS ACTUALES</Text>
+                <View style={styles.btnRow}>
+                  {[0, 1, 2].map((s) => (
+                    <TouchableOpacity
+                      key={s}
+                      style={[styles.strikeBtn, simonStrikes === s && styles.strikeBtnActive]}
+                      onPress={() => setSimonStrikes(s)}
+                    >
+                      <Text style={[styles.strikeBtnText, simonStrikes === s && styles.strikeBtnTextActive]}>{s}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
             </View>
 
-            {/* Visual Color Mapping Results */}
-            <View style={styles.simonGrid}>
-              {['rojo', 'azul', 'verde', 'amarillo'].map(c => {
-                const mapped = mappingTable[c];
-                return (
-                  <View key={c} style={styles.simonPairCard}>
-                    <Text style={styles.simonFlashes}>Luz {c.toUpperCase()}</Text>
+            {/* Live Interactive Translation Card */}
+            <View style={[styles.card, styles.cardAccent]}>
+              <Text style={styles.cardTitle}>
+                TRADUCCIÓN EN TIEMPO REAL ({simonHasVowel ? 'CON VOCAL' : 'SIN VOCAL'}, {simonStrikes} FALLOS):
+              </Text>
+              <View style={styles.simonTranslateGrid}>
+                {Object.entries(currentMapping).map(([flash, press]) => (
+                  <View key={flash} style={styles.simonPair}>
+                    <Text style={[styles.simonFlashText, getSimonColorStyle(flash)]}>
+                      Luz {flash.toUpperCase()}
+                    </Text>
                     <Text style={styles.simonArrow}>➔</Text>
-                    <Text style={[styles.simonPress, { color: getTextColor(mapped) }]}>
-                      PULSA {mapped.toUpperCase()}
+                    <Text style={[styles.simonPressText, getSimonColorStyle(press)]}>
+                      Pulsar {press.toUpperCase()}
                     </Text>
                   </View>
-                );
-              })}
-            </View>
-          </View>
-        );
-      }
-
-      case 'whos_on_first': {
-        const filteredPositions = Object.keys(WHOS_ON_FIRST_POSITIONS).filter(k =>
-          k.toLowerCase().includes(wofDisplayQuery.toLowerCase())
-        );
-        const filteredButtons = Object.keys(WHOS_ON_FIRST_LISTS).filter(k =>
-          k.toLowerCase().includes(wofButtonQuery.toLowerCase())
-        );
-
-        return (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>MÓDULO 5: ¿QUIÉN VA PRIMERO?</Text>
-            
-            {/* Step 1 Searcher */}
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>PASO 1: PALABRA EN LA PANTALLA</Text>
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Buscar palabra mostrada en pantalla..."
-                placeholderTextColor="#666"
-                value={wofDisplayQuery}
-                onChangeText={setWofDisplayQuery}
-              />
-              <View style={styles.tableList}>
-                {filteredPositions.slice(0, 8).map((word, idx) => (
-                  <View key={idx} style={styles.tableRow}>
-                    <Text style={styles.tableCol1}>{word === '' ? '[EN BLANCO]' : word}</Text>
-                    <Text style={styles.tableCol2}>Leer botón: <Text style={styles.hlPos}>{WHOS_ON_FIRST_POSITIONS[word]}</Text></Text>
-                  </View>
                 ))}
               </View>
-            </View>
-
-            {/* Step 2 Searcher */}
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>PASO 2: LISTAS DE PRIORIDAD</Text>
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Buscar etiqueta del botón leído..."
-                placeholderTextColor="#666"
-                value={wofButtonQuery}
-                onChangeText={setWofButtonQuery}
-              />
-              {filteredButtons.slice(0, 3).map((btnWord, idx) => (
-                <View key={idx} style={styles.priorityBox}>
-                  <Text style={styles.priorityHeader}>Si el botón leído dice "{btnWord}":</Text>
-                  <Text style={styles.priorityText}>
-                    Presiona el primer botón que coincida en:{'\n'}
-                    <Text style={styles.priorityItems}>{WHOS_ON_FIRST_LISTS[btnWord].join(', ')}</Text>
-                  </Text>
-                </View>
-              ))}
             </View>
           </View>
         );
@@ -282,136 +212,124 @@ export default function InteractiveManual() {
       case 'memory':
         return (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>MÓDULO 6: MEMORIA</Text>
+            <Text style={styles.sectionTitle}>MÓDULO 5: MEMORIA</Text>
             <Text style={styles.sectionSubtitle}>
-              Presiona el botón correcto para avanzar por las 5 etapas. Las posiciones son del 1 (izquierda) al 4 (derecha).
+              Presiona el botón correcto para avanzar por las 5 etapas. Las posiciones van de 1 a 4 de izquierda a derecha.
             </Text>
 
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>ETAPA 1</Text>
-              <Text style={styles.rule}>• Si pantalla es 1: presiona botón en la posición 2.</Text>
-              <Text style={styles.rule}>• Si pantalla es 2: presiona botón en la posición 2.</Text>
-              <Text style={styles.rule}>• Si pantalla es 3: presiona botón en la posición 3.</Text>
-              <Text style={styles.rule}>• Si pantalla es 4: presiona botón en la posición 4.</Text>
+              <Text style={styles.cardStage}>ETAPA 1</Text>
+              <Text style={styles.rule}>• Pantalla 1: Presiona el botón en la posición 2.</Text>
+              <Text style={styles.rule}>• Pantalla 2: Presiona el botón en la posición 2.</Text>
+              <Text style={styles.rule}>• Pantalla 3: Presiona el botón en la posición 3.</Text>
+              <Text style={styles.rule}>• Pantalla 4: Presiona el botón en la posición 4.</Text>
             </View>
 
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>ETAPA 2</Text>
-              <Text style={styles.rule}>• Si pantalla es 1: presiona el botón con el número "4".</Text>
-              <Text style={styles.rule}>• Si pantalla es 2: presiona en la misma posición que en Etapa 1.</Text>
-              <Text style={styles.rule}>• Si pantalla es 3: presiona botón en la posición 1.</Text>
-              <Text style={styles.rule}>• Si pantalla es 4: presiona en la misma posición que en Etapa 1.</Text>
+              <Text style={styles.cardStage}>ETAPA 2</Text>
+              <Text style={styles.rule}>• Pantalla 1: Presiona el botón con el número "4".</Text>
+              <Text style={styles.rule}>• Pantalla 2: Presiona el botón en la misma posición que en la etapa 1.</Text>
+              <Text style={styles.rule}>• Pantalla 3: Presiona el botón en la posición 1.</Text>
+              <Text style={styles.rule}>• Pantalla 4: Presiona el botón en la misma posición que en la etapa 1.</Text>
             </View>
 
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>ETAPA 3</Text>
-              <Text style={styles.rule}>• Si pantalla es 1: presiona botón con el mismo número que en Etapa 2.</Text>
-              <Text style={styles.rule}>• Si pantalla es 2: presiona botón con el mismo número que en Etapa 1.</Text>
-              <Text style={styles.rule}>• Si pantalla es 3: presiona botón en la posición 3.</Text>
-              <Text style={styles.rule}>• Si pantalla es 4: presiona el botón con el número "4".</Text>
+              <Text style={styles.cardStage}>ETAPA 3</Text>
+              <Text style={styles.rule}>• Pantalla 1: Presiona el botón con el mismo número que en la etapa 2.</Text>
+              <Text style={styles.rule}>• Pantalla 2: Presiona el botón con el mismo número que en la etapa 1.</Text>
+              <Text style={styles.rule}>• Pantalla 3: Presiona el botón en la posición 3.</Text>
+              <Text style={styles.rule}>• Pantalla 4: Presiona el botón con el número "4".</Text>
             </View>
 
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>ETAPA 4</Text>
-              <Text style={styles.rule}>• Si pantalla es 1: presiona en la misma posición que en Etapa 1.</Text>
-              <Text style={styles.rule}>• Si pantalla es 2: presiona botón en la posición 1.</Text>
-              <Text style={styles.rule}>• Si pantalla es 3: presiona en la misma posición que en Etapa 2.</Text>
-              <Text style={styles.rule}>• Si pantalla es 4: presiona en la misma posición que en Etapa 2.</Text>
+              <Text style={styles.cardStage}>ETAPA 4</Text>
+              <Text style={styles.rule}>• Pantalla 1: Presiona el botón en la misma posición que en la etapa 1.</Text>
+              <Text style={styles.rule}>• Pantalla 2: Presiona el botón en la posición 1.</Text>
+              <Text style={styles.rule}>• Pantalla 3: Presiona el botón en la misma posición que en la etapa 2.</Text>
+              <Text style={styles.rule}>• Pantalla 4: Presiona el botón en la misma posición que en la etapa 2.</Text>
             </View>
 
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>ETAPA 5</Text>
-              <Text style={styles.rule}>• Si pantalla es 1: presiona botón con el mismo número que en Etapa 1.</Text>
-              <Text style={styles.rule}>• Si pantalla es 2: presiona botón con el mismo número que en Etapa 2.</Text>
-              <Text style={styles.rule}>• Si pantalla es 3: presiona botón con el mismo número que en Etapa 4.</Text>
-              <Text style={styles.rule}>• Si pantalla es 4: presiona botón con el mismo número que en Etapa 3.</Text>
+              <Text style={styles.cardStage}>ETAPA 5</Text>
+              <Text style={styles.rule}>• Pantalla 1: Presiona el botón con el mismo número que en la etapa 1.</Text>
+              <Text style={styles.rule}>• Pantalla 2: Presiona el botón con el mismo número que en la etapa 2.</Text>
+              <Text style={styles.rule}>• Pantalla 3: Presiona el botón con el mismo número que en la etapa 4.</Text>
+              <Text style={styles.rule}>• Pantalla 4: Presiona el botón con el mismo número que en la etapa 3.</Text>
             </View>
           </View>
         );
-
-      case 'morse_code': {
-        const filtered = MORSE_TABLE.filter(item =>
-          item.word.includes(morseSearch.toLowerCase()) ||
-          item.freq.includes(morseSearch)
-        );
-
-        return (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>MÓDULO 7: CÓDIGO MORSE</Text>
-            <Text style={styles.sectionSubtitle}>
-              Identifica la palabra transmitida y responde con la frecuencia en MHz exacta.
-            </Text>
-
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Buscar por palabra o frecuencia (ej. 3.535)..."
-              placeholderTextColor="#666"
-              value={morseSearch}
-              onChangeText={setMorseSearch}
-            />
-
-            <View style={styles.tableList}>
-              {filtered.map((item, idx) => (
-                <View key={idx} style={styles.morseRow}>
-                  <View>
-                    <Text style={styles.morseWord}>{item.word.toUpperCase()}</Text>
-                    <Text style={styles.morsePattern}>{item.morse}</Text>
-                  </View>
-                  <Text style={styles.morseFreq}>{item.freq}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        );
-      }
 
       case 'passwords': {
-        const filteredWords = PASSWORD_WORDS.filter(w => {
-          if (passCol1 && !passCol1.toLowerCase().includes(w[0])) return false;
-          if (passCol2 && !passCol2.toLowerCase().includes(w[1])) return false;
-          if (passCol3 && !passCol3.toLowerCase().includes(w[2])) return false;
-          if (passCol4 && !passCol4.toLowerCase().includes(w[3])) return false;
-          if (passCol5 && !passCol5.toLowerCase().includes(w[4])) return false;
+        const filteredWords = PASSWORD_WORDS.filter((word) => {
+          if (passCol1 && !passCol1.toLowerCase().includes(word[0])) return false;
+          if (passCol2 && !passCol2.toLowerCase().includes(word[1])) return false;
+          if (passCol3 && !passCol3.toLowerCase().includes(word[2])) return false;
+          if (passCol4 && !passCol4.toLowerCase().includes(word[3])) return false;
+          if (passCol5 && !passCol5.toLowerCase().includes(word[4])) return false;
           return true;
         });
 
         return (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>MÓDULO 8: CONTRASEÑAS (FILTRO EN VIVO)</Text>
+            <Text style={styles.sectionTitle}>MÓDULO 6: CONTRASEÑAS</Text>
             <Text style={styles.sectionSubtitle}>
-              Escribe las letras disponibles en cada columna para filtrar las 35 palabras posibles.
+              Ingresa las letras disponibles en cada columna para filtrar en vivo la única palabra válida.
             </Text>
 
-            <View style={styles.passInputsRow}>
+            {/* Interactive Column Input Solvers */}
+            <View style={styles.passInputRow}>
               {[
                 { val: passCol1, set: setPassCol1, col: 1 },
                 { val: passCol2, set: setPassCol2, col: 2 },
                 { val: passCol3, set: setPassCol3, col: 3 },
                 { val: passCol4, set: setPassCol4, col: 4 },
                 { val: passCol5, set: setPassCol5, col: 5 }
-              ].map(inp => (
-                <View key={inp.col} style={styles.passColBox}>
-                  <Text style={styles.passColLabel}>C{inp.col}</Text>
+              ].map((c) => (
+                <View key={c.col} style={styles.colInputBox}>
+                  <Text style={styles.colInputLabel}>C{c.col}</Text>
                   <TextInput
-                    style={styles.passInput}
-                    placeholder="letras"
-                    placeholderTextColor="#555"
-                    value={inp.val}
-                    onChangeText={inp.set}
+                    style={styles.colInputText}
+                    placeholder="abc..."
+                    placeholderTextColor="#475569"
+                    value={c.val}
+                    onChangeText={c.set}
                     autoCapitalize="none"
+                    maxLength={6}
                   />
                 </View>
               ))}
             </View>
 
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>
-                PALABRAS COMPATIBLES ({filteredWords.length} de {PASSWORD_WORDS.length}):
-              </Text>
+            {/* Live Filter Results */}
+            <View style={[styles.card, styles.cardAccent]}>
+              <View style={styles.passResultHeader}>
+                <Text style={styles.cardTitle}>PALABRAS POSIBLES ({filteredWords.length}):</Text>
+                {(passCol1 || passCol2 || passCol3 || passCol4 || passCol5) && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setPassCol1(''); setPassCol2(''); setPassCol3(''); setPassCol4(''); setPassCol5('');
+                    }}
+                  >
+                    <Text style={styles.clearFilterText}>LIMPIAR FILTROS</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
               <View style={styles.passWordsGrid}>
-                {filteredWords.map((w, idx) => (
-                  <View key={idx} style={[styles.passBadge, filteredWords.length === 1 && styles.passBadgeSolo]}>
-                    <Text style={[styles.passWordText, filteredWords.length === 1 && styles.passWordSoloText]}>
+                {filteredWords.map((w) => (
+                  <View
+                    key={w}
+                    style={[
+                      styles.passWordChip,
+                      filteredWords.length === 1 && styles.passWordChipSolution
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.passWordText,
+                        filteredWords.length === 1 && styles.passWordTextSolution
+                      ]}
+                    >
                       {w.toUpperCase()}
                     </Text>
                   </View>
@@ -422,69 +340,35 @@ export default function InteractiveManual() {
         );
       }
 
-      case 'needy_knob':
-        return (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>MÓDULO 9: PERILLAS (EXIGENTE)</Text>
-            <Text style={styles.sectionSubtitle}>
-              Compara el patrón de 12 LEDs que ves en la telemetría con estas 8 configuraciones para indicar la dirección.
-            </Text>
-
-            {KNOB_MANUAL_PATTERNS.map((p, idx) => (
-              <View key={idx} style={styles.card}>
-                <View style={styles.knobHeaderRow}>
-                  <Text style={styles.knobDirText}>➔ POSICIÓN: {p.dir}</Text>
-                </View>
-                <Text style={styles.knobPatternRow}>Fila Superior: <Text style={styles.hlCode}>{p.top}</Text></Text>
-                <Text style={styles.knobPatternRow}>Fila Inferior: <Text style={styles.hlCode}>{p.bot}</Text></Text>
-              </View>
-            ))}
-          </View>
-        );
-
-      case 'needy_vent':
-        return (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>MÓDULO 10: GAS Y CONDENSADOR</Text>
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>VENTILACIÓN DE GAS</Text>
-              <Text style={styles.rule}>• Si la pantalla del reloj pregunta "¿VENTILAR GAS?", responde <Text style={styles.hlGreen}>S (Sí)</Text>.</Text>
-              <Text style={styles.rule}>• Si la pantalla del reloj pregunta "¿DETONAR?", responde <Text style={styles.hlRed}>N (No)</Text>.</Text>
-              <Text style={styles.rule}>• Se debe responder antes de que se agote el temporizador de la pantalla.</Text>
-            </View>
-
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>DESCARGA DEL CONDENSADOR</Text>
-              <Text style={styles.rule}>• El condensador acumula carga continuamente.</Text>
-              <Text style={styles.rule}>• Si alcanza el 100%, causará un fallo automático.</Text>
-              <Text style={styles.rule}>• El jugador del reloj debe girar el bisel físico o pulsar descargar para mantenerlo bajo.</Text>
-            </View>
-          </View>
-        );
-
       case 'appendices':
         return (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>APÉNDICES DE LA BOMBA (EDGEWORK)</Text>
-            
+            <Text style={styles.sectionTitle}>APÉNDICES DE CARCASA (EDGEWORK)</Text>
+            <Text style={styles.sectionSubtitle}>
+              Referencias rápidas para identificar elementos laterales de la bomba.
+            </Text>
+
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>APÉNDICE A: INDICADORES OFICIALES</Text>
-              <Text style={styles.rule}>Lista oficial de 11 indicadores posibles:</Text>
-              <Text style={styles.hlCode}>SND, CLR, CAR, IND, FRQ, SIG, NSA, MSA, TRN, BOB, FRK</Text>
-              <Text style={styles.rule}>Pueden estar encendidos (con luz) o apagados.</Text>
+              <Text style={styles.cardTitle}>APÉNDICE A: INDICADORES</Text>
+              <Text style={styles.rule}>• Indicadores encendidos tienen una luz roja activa (★ o ●).</Text>
+              <Text style={styles.rule}>• Indicadores apagados carecen de luz activa (☆ o ○).</Text>
+              <Text style={styles.rule}>• Etiquetas oficiales: SND, CLR, CAR, IND, FRQ, SIG, NSA, MSA, TRN, BOB, FRK.</Text>
             </View>
 
             <View style={styles.card}>
               <Text style={styles.cardTitle}>APÉNDICE B: BATERÍAS</Text>
-              <Text style={styles.rule}>• Tipo AA: En paquetes de 2 baterías delgadas.</Text>
-              <Text style={styles.rule}>• Tipo D: Baterías cilíndricas gruesas individuales.</Text>
-              <Text style={styles.rule}>• El número total es la suma de todas las baterías.</Text>
+              <Text style={styles.rule}>• Baterías AA: Vienen en pares de 2 dentro de un soporte alargado.</Text>
+              <Text style={styles.rule}>• Baterías D: Vienen solas en soportes cilíndricos anchos individuales.</Text>
             </View>
 
             <View style={styles.card}>
               <Text style={styles.cardTitle}>APÉNDICE C: PUERTOS</Text>
-              <Text style={styles.rule}>Puertos laterales en la carcasa:</Text>
-              <Text style={styles.hlCode}>DVI-D, Paralelo, PS/2, RJ-45, Serial, Estéreo RCA</Text>
+              <Text style={styles.rule}>• DVI-D: Conector blanco alargado de vídeo digital.</Text>
+              <Text style={styles.rule}>• Paralelo: Conector morado alargado de 25 pines.</Text>
+              <Text style={styles.rule}>• PS/2: Conector circular verde/morado para teclado/ratón.</Text>
+              <Text style={styles.rule}>• RJ-45: Conector modular cuadrado de red Ethernet.</Text>
+              <Text style={styles.rule}>• Serial: Conector trapezoidal de 9 pines.</Text>
+              <Text style={styles.rule}>• Estéreo RCA: Doble conector circular rojo y blanco de audio.</Text>
             </View>
           </View>
         );
@@ -496,412 +380,349 @@ export default function InteractiveManual() {
 
   return (
     <View style={styles.container}>
-      {/* Horizontal Tabs Bar */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.tabsNav}
-        contentContainerStyle={styles.tabsNavContent}
-      >
-        {MODULE_TABS.map(tab => {
-          const isActive = activeTab === tab.key;
-          return (
+      {/* Module Horizontal Tab Bar */}
+      <View style={styles.tabsContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScroll}>
+          {MODULE_TABS.map((tab) => (
             <TouchableOpacity
               key={tab.key}
-              style={[styles.tabButton, isActive && styles.tabButtonActive]}
+              style={[styles.tabBtn, activeTab === tab.key && styles.tabBtnActive]}
               onPress={() => setActiveTab(tab.key)}
             >
-              <Text style={[styles.tabButtonText, isActive && styles.tabButtonTextActive]}>
+              <Text style={[styles.tabBtnText, activeTab === tab.key && styles.tabBtnTextActive]}>
                 {tab.label}
               </Text>
             </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+          ))}
+        </ScrollView>
+      </View>
 
-      {/* Main Tab View */}
-      <ScrollView style={styles.bodyScroll} contentContainerStyle={styles.bodyContent}>
+      {/* Main Manual Scrollable Section */}
+      <ScrollView style={styles.scrollArea} contentContainerStyle={styles.scrollContent}>
         {renderContent()}
       </ScrollView>
     </View>
   );
 }
 
-function getTextColor(colorName) {
-  switch (colorName) {
-    case 'rojo': return '#ff4d6d';
-    case 'azul': return '#4cc9f0';
-    case 'verde': return '#00ff88';
-    case 'amarillo': return '#ffd166';
-    default: return '#fff';
+function getSimonColorStyle(color) {
+  switch (color?.toLowerCase()) {
+    case 'rojo': return { color: '#EF4444' };
+    case 'azul': return { color: '#3B82F6' };
+    case 'verde': return { color: '#10B981' };
+    case 'amarillo': return { color: '#FACC15' };
+    default: return { color: '#F8FAFC' };
   }
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0c12',
+    backgroundColor: '#090A0F'
   },
-  tabsNav: {
-    backgroundColor: '#121622',
+  tabsContainer: {
     borderBottomWidth: 1,
-    borderBottomColor: '#1d2335',
-    maxHeight: 50,
+    borderBottomColor: '#1E293B',
+    backgroundColor: '#0F172A'
   },
-  tabsNavContent: {
-    paddingHorizontal: 12,
-    alignItems: 'center',
-  },
-  tabButton: {
-    paddingHorizontal: 14,
+  tabsScroll: {
+    paddingHorizontal: 8,
     paddingVertical: 10,
+    gap: 8
+  },
+  tabBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
     borderRadius: 8,
-    marginRight: 6,
+    backgroundColor: '#1E293B',
+    borderWidth: 1,
+    borderColor: '#334155'
   },
-  tabButtonActive: {
-    backgroundColor: '#1f2940',
-    borderBottomWidth: 2,
-    borderBottomColor: '#00ffcc',
+  tabBtnActive: {
+    backgroundColor: '#00E5FF20',
+    borderColor: '#00E5FF'
   },
-  tabButtonText: {
-    color: '#8391af',
+  tabBtnText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
+    color: '#94A3B8'
   },
-  tabButtonTextActive: {
-    color: '#00ffcc',
-    fontWeight: 'bold',
+  tabBtnTextActive: {
+    color: '#00E5FF'
   },
-  bodyScroll: {
-    flex: 1,
+  scrollArea: {
+    flex: 1
   },
-  bodyContent: {
+  scrollContent: {
     padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 40
   },
   section: {
-    marginBottom: 20,
+    gap: 14
   },
   sectionTitle: {
-    color: '#fff',
     fontSize: 16,
-    fontWeight: 'bold',
-    letterSpacing: 0.8,
+    fontWeight: '900',
+    color: '#00E5FF',
+    letterSpacing: 0.5
   },
   sectionSubtitle: {
-    color: '#8b9bb4',
     fontSize: 12,
-    marginTop: 4,
-    marginBottom: 14,
+    color: '#94A3B8',
+    lineHeight: 18
   },
   card: {
-    backgroundColor: '#121622',
+    backgroundColor: '#111827',
     borderRadius: 12,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#1f263b',
-    marginBottom: 12,
+    borderColor: '#1F2937',
+    gap: 8
   },
   cardAccent: {
-    borderColor: '#3a4b70',
-    backgroundColor: '#161c2b',
+    borderColor: '#00E5FF50',
+    backgroundColor: '#0F172A'
   },
   cardTitle: {
-    color: '#00ffcc',
-    fontSize: 12,
-    fontWeight: 'bold',
-    letterSpacing: 0.8,
-    marginBottom: 8,
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#FBBF24',
+    letterSpacing: 0.5,
+    marginBottom: 4
+  },
+  cardStage: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#00E5FF',
+    marginBottom: 4
   },
   rule: {
-    color: '#cbd5e1',
     fontSize: 12,
-    lineHeight: 18,
-    marginBottom: 6,
+    color: '#E2E8F0',
+    lineHeight: 19
   },
   stripRule: {
-    color: '#cbd5e1',
     fontSize: 12,
-    lineHeight: 20,
-    marginLeft: 6,
-    marginBottom: 4,
+    color: '#E2E8F0',
+    lineHeight: 18,
+    paddingLeft: 6
   },
   hlBold: {
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  hlBlue: {
-    color: '#4cc9f0',
-    fontWeight: 'bold',
-  },
-  hlWhite: {
-    color: '#ffffff',
-    fontWeight: 'bold',
-  },
-  hlYellow: {
-    color: '#ffd166',
-    fontWeight: 'bold',
-  },
-  hlRed: {
-    color: '#ff4d6d',
-    fontWeight: 'bold',
-  },
-  hlGreen: {
-    color: '#00ff88',
-    fontWeight: 'bold',
+    fontWeight: '800',
+    color: '#FFFFFF'
   },
   hlNumber: {
-    color: '#00ffcc',
-    fontWeight: 'bold',
-    fontSize: 14,
+    fontWeight: '900',
+    color: '#FBBF24',
+    fontSize: 14
   },
-  hlPos: {
-    color: '#00ffcc',
-    fontWeight: 'bold',
+  hlBlue: {
+    color: '#60A5FA',
+    fontWeight: '700'
   },
-  hlCode: {
-    color: '#ffd166',
-    fontFamily: 'monospace',
-    fontWeight: 'bold',
+  hlWhite: {
+    color: '#F8FAFC',
+    fontWeight: '700'
+  },
+  hlYellow: {
+    color: '#FACC15',
+    fontWeight: '700'
+  },
+  hlRed: {
+    color: '#F87171',
+    fontWeight: '700'
   },
   keypadScroll: {
-    marginTop: 8,
+    paddingVertical: 6,
+    gap: 10
   },
   keypadColumnCard: {
-    backgroundColor: '#121622',
+    backgroundColor: '#1E293B',
     borderRadius: 10,
     padding: 10,
-    width: 65,
-    marginRight: 10,
+    width: 90,
     borderWidth: 1,
-    borderColor: '#232b40',
+    borderColor: '#334155',
     alignItems: 'center',
+    gap: 6
   },
   keypadColHeader: {
-    color: '#00ffcc',
-    fontSize: 10,
-    fontWeight: 'bold',
-    marginBottom: 8,
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#00E5FF',
+    marginBottom: 4
   },
   symbolItem: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 4,
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingVertical: 3,
+    paddingHorizontal: 6,
+    backgroundColor: '#0F172A',
+    borderRadius: 6
   },
   symbolChar: {
-    fontSize: 22,
-    color: '#fff',
+    fontSize: 18,
+    color: '#F8FAFC',
+    fontWeight: '700'
   },
   symbolOrder: {
-    fontSize: 8,
-    color: '#55657e',
+    fontSize: 10,
+    color: '#64748B',
+    fontWeight: '700'
   },
-  calcControlRow: {
-    marginBottom: 12,
-  },
-  calcLabel: {
-    color: '#8b9bb4',
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 6,
-  },
-  toggleRow: {
+  interactiveFilterRow: {
     flexDirection: 'row',
+    gap: 12,
+    flexWrap: 'wrap'
+  },
+  filterGroup: {
+    flex: 1,
+    minWidth: 140,
+    backgroundColor: '#1E293B',
+    padding: 10,
+    borderRadius: 10,
+    gap: 6
+  },
+  filterLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#94A3B8'
+  },
+  btnRow: {
+    flexDirection: 'row',
+    gap: 6
   },
   toggleBtn: {
-    backgroundColor: '#151b29',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    flex: 1,
+    paddingVertical: 6,
     borderRadius: 6,
-    marginRight: 8,
+    backgroundColor: '#0F172A',
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#242f47',
+    borderColor: '#334155'
   },
   toggleBtnActive: {
-    backgroundColor: '#00ffcc',
-    borderColor: '#00ffcc',
+    backgroundColor: '#00E5FF20',
+    borderColor: '#00E5FF'
   },
   toggleBtnText: {
-    color: '#8b9bb4',
     fontSize: 11,
-    fontWeight: 'bold',
+    fontWeight: '700',
+    color: '#64748B'
   },
   toggleBtnTextActive: {
-    color: '#000',
+    color: '#00E5FF'
   },
-  simonGrid: {
-    marginTop: 8,
+  strikeBtn: {
+    flex: 1,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: '#0F172A',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#334155'
   },
-  simonPairCard: {
-    backgroundColor: '#121622',
-    borderRadius: 8,
-    padding: 12,
+  strikeBtnActive: {
+    backgroundColor: '#EF444430',
+    borderColor: '#EF4444'
+  },
+  strikeBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#64748B'
+  },
+  strikeBtnTextActive: {
+    color: '#EF4444'
+  },
+  simonTranslateGrid: {
+    gap: 8,
+    marginTop: 6
+  },
+  simonPair: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#242f47',
-  },
-  simonFlashes: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '600',
-    width: 110,
-  },
-  simonArrow: {
-    color: '#55657e',
-    fontSize: 16,
-  },
-  simonPress: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    width: 140,
-    textAlign: 'right',
-  },
-  searchInput: {
-    backgroundColor: '#0a0d14',
-    borderRadius: 8,
+    backgroundColor: '#1E293B',
     paddingHorizontal: 12,
     paddingVertical: 8,
-    color: '#fff',
-    fontSize: 12,
-    borderWidth: 1,
-    borderColor: '#242f47',
-    marginBottom: 10,
+    borderRadius: 8
   },
-  tableList: {
-    marginTop: 4,
+  simonFlashText: {
+    fontSize: 13,
+    fontWeight: '800'
   },
-  tableRow: {
+  simonArrow: {
+    fontSize: 14,
+    color: '#64748B'
+  },
+  simonPressText: {
+    fontSize: 13,
+    fontWeight: '800'
+  },
+  passInputRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 6,
-    borderBottomWidth: 1,
-    borderBottomColor: '#171d2c',
+    gap: 6,
+    justifyContent: 'space-between'
   },
-  tableCol1: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  tableCol2: {
-    color: '#8b9bb4',
-    fontSize: 12,
-  },
-  priorityBox: {
-    backgroundColor: '#0c0f17',
-    padding: 10,
+  colInputBox: {
+    flex: 1,
+    backgroundColor: '#1E293B',
     borderRadius: 8,
-    marginBottom: 8,
+    padding: 6,
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#192233',
+    borderColor: '#334155'
   },
-  priorityHeader: {
-    color: '#00ffcc',
+  colInputLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#00E5FF',
+    marginBottom: 4
+  },
+  colInputText: {
     fontSize: 12,
-    fontWeight: 'bold',
-    marginBottom: 4,
+    color: '#F8FAFC',
+    textAlign: 'center',
+    padding: 0,
+    width: '100%'
   },
-  priorityText: {
-    color: '#8b9bb4',
-    fontSize: 11,
-    lineHeight: 16,
-  },
-  priorityItems: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  morseRow: {
+  passResultHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#181e2b',
+    marginBottom: 6
   },
-  morseWord: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: 'bold',
-  },
-  morsePattern: {
-    color: '#ffd166',
-    fontFamily: 'monospace',
-    fontSize: 11,
-    marginTop: 2,
-  },
-  morseFreq: {
-    color: '#00ff88',
-    fontSize: 13,
-    fontWeight: 'bold',
-    fontFamily: 'monospace',
-  },
-  passInputsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  passColBox: {
-    width: '18%',
-  },
-  passColLabel: {
-    color: '#00ffcc',
+  clearFilterText: {
     fontSize: 10,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  passInput: {
-    backgroundColor: '#121622',
-    borderWidth: 1,
-    borderColor: '#242f47',
-    borderRadius: 6,
-    paddingHorizontal: 4,
-    paddingVertical: 6,
-    color: '#fff',
-    fontSize: 11,
-    textAlign: 'center',
+    fontWeight: '800',
+    color: '#EF4444'
   },
   passWordsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginTop: 4,
+    gap: 6
   },
-  passBadge: {
-    backgroundColor: '#1b2234',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    marginRight: 6,
-    marginBottom: 6,
+  passWordChip: {
+    backgroundColor: '#1E293B',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#334155'
   },
-  passBadgeSolo: {
-    backgroundColor: '#00ff88',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+  passWordChipSolution: {
+    backgroundColor: '#10B98130',
+    borderColor: '#10B981'
   },
   passWordText: {
-    color: '#8b9bb4',
-    fontSize: 11,
-    fontWeight: '600',
-    fontFamily: 'monospace',
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#CBD5E1'
   },
-  passWordSoloText: {
-    color: '#000',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  knobHeaderRow: {
-    marginBottom: 4,
-  },
-  knobDirText: {
-    color: '#ffb703',
-    fontSize: 13,
-    fontWeight: 'bold',
-  },
-  knobPatternRow: {
-    color: '#8b9bb4',
-    fontSize: 11,
-    marginVertical: 2,
+  passWordTextSolution: {
+    color: '#10B981',
+    fontWeight: '900'
   }
 });

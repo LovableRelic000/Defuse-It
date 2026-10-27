@@ -3,12 +3,13 @@ package com.defuseit.watch;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
-import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -26,6 +27,12 @@ public class ModuleViews {
     public interface OnSimonClickListener { void onClick(String color); }
     public interface OnMemoryClickListener { void onClick(int buttonIndex, int label); }
     public interface OnPasswordSubmitListener { void onSubmit(String word); }
+    public interface OnPasswordColSelectListener { void onColSelect(int colIndex); }
+    public interface OnWireSelectListener { void onSelect(int wireIndex); }
+
+    public static int dpToPx(Context ctx, int dp) {
+        return (int) (dp * ctx.getResources().getDisplayMetrics().density + 0.5f);
+    }
 
     // --- 0. EDGEWORK VIEW ---
     public static View buildEdgeworkView(Context ctx, JSONObject edgework) {
@@ -36,23 +43,32 @@ public class ModuleViews {
         LinearLayout layout = new LinearLayout(ctx);
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setGravity(Gravity.CENTER_HORIZONTAL);
-        layout.setPadding(6, 2, 6, 16);
+        layout.setPadding(dpToPx(ctx, 6), dpToPx(ctx, 4), dpToPx(ctx, 6), dpToPx(ctx, 24));
 
         TextView tvTitle = new TextView(ctx);
         tvTitle.setText("CARCASA (EDGEWORK)");
         tvTitle.setTextColor(Color.parseColor("#00E5FF"));
         tvTitle.setTextSize(10f);
         tvTitle.setTypeface(Typeface.DEFAULT_BOLD);
+        tvTitle.setGravity(Gravity.CENTER);
         layout.addView(tvTitle);
 
         if (edgework != null) {
             String serial = edgework.optString("serialNumber", "------");
+            boolean hasVowel = edgework.optBoolean("hasVowel", false);
+            boolean isOdd = edgework.optBoolean("isLastDigitOdd", false);
+
             TextView tvSerial = new TextView(ctx);
-            tvSerial.setText("SERIAL: " + serial);
+            tvSerial.setText(String.format("SERIAL: %s\n(%s | %s)",
+                serial,
+                hasVowel ? "CON VOCAL" : "SIN VOCAL",
+                isOdd ? "ÚLT. IMPAR" : "ÚLT. PAR"
+            ));
             tvSerial.setTextColor(Color.parseColor("#FBBF24"));
-            tvSerial.setTextSize(14f);
+            tvSerial.setTextSize(12f);
             tvSerial.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
-            tvSerial.setPadding(0, 4, 0, 2);
+            tvSerial.setGravity(Gravity.CENTER);
+            tvSerial.setPadding(0, dpToPx(ctx, 4), 0, dpToPx(ctx, 4));
             layout.addView(tvSerial);
 
             JSONObject bat = edgework.optJSONObject("batteries");
@@ -63,6 +79,7 @@ public class ModuleViews {
             tvBat.setText(String.format(Locale.getDefault(), "Baterías: %d (AA: %d, D: %d)", total, aa, d));
             tvBat.setTextColor(Color.parseColor("#F1F5F9"));
             tvBat.setTextSize(10f);
+            tvBat.setGravity(Gravity.CENTER);
             layout.addView(tvBat);
 
             JSONArray inds = edgework.optJSONArray("indicators");
@@ -82,7 +99,8 @@ public class ModuleViews {
             tvInds.setText(indStr.toString());
             tvInds.setTextColor(Color.parseColor("#94A3B8"));
             tvInds.setTextSize(10f);
-            tvInds.setPadding(0, 2, 0, 2);
+            tvInds.setGravity(Gravity.CENTER);
+            tvInds.setPadding(0, dpToPx(ctx, 2), 0, dpToPx(ctx, 2));
             layout.addView(tvInds);
 
             JSONArray ports = edgework.optJSONArray("ports");
@@ -99,6 +117,7 @@ public class ModuleViews {
             tvPorts.setText(portStr.toString());
             tvPorts.setTextColor(Color.parseColor("#38BDF8"));
             tvPorts.setTextSize(10f);
+            tvPorts.setGravity(Gravity.CENTER);
             layout.addView(tvPorts);
         }
 
@@ -107,11 +126,12 @@ public class ModuleViews {
     }
 
     // --- 1. WIRES MODULE ---
-    public static View buildWiresView(Context ctx, JSONObject mod, int selectedWireIndex, OnWireCutListener listener) {
+    public static View buildWiresView(Context ctx, JSONObject mod, int selectedWireIndex,
+                                      OnWireSelectListener selectListener, OnWireCutListener cutListener) {
         LinearLayout layout = new LinearLayout(ctx);
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setGravity(Gravity.CENTER_HORIZONTAL);
-        layout.setPadding(4, 2, 4, 4);
+        layout.setPadding(dpToPx(ctx, 4), dpToPx(ctx, 2), dpToPx(ctx, 4), dpToPx(ctx, 4));
 
         if (mod.optBoolean("solved")) {
             layout.addView(createSolvedBadge(ctx));
@@ -123,56 +143,77 @@ public class ModuleViews {
 
         if (wires != null) {
             for (int i = 0; i < wires.length(); i++) {
+                final int wireIdx = i;
                 String colorName = wires.optString(i, "blanco").toLowerCase();
 
                 LinearLayout wireRow = new LinearLayout(ctx);
                 wireRow.setOrientation(LinearLayout.HORIZONTAL);
                 wireRow.setGravity(Gravity.CENTER_VERTICAL);
-                wireRow.setPadding(4, 1, 4, 1);
+                wireRow.setPadding(dpToPx(ctx, 6), dpToPx(ctx, 2), dpToPx(ctx, 6), dpToPx(ctx, 2));
+                wireRow.setClickable(true);
+                wireRow.setFocusable(true);
+                wireRow.setOnClickListener(v -> {
+                    if (selectListener != null) selectListener.onSelect(wireIdx);
+                });
 
+                // Pointer Arrow
                 TextView tvPointer = new TextView(ctx);
-                tvPointer.setText(i == selectedWireIndex ? "▶" : " ");
+                tvPointer.setText(wireIdx == selectedWireIndex ? "▶" : "  ");
                 tvPointer.setTextColor(Color.parseColor("#00E5FF"));
                 tvPointer.setTextSize(10f);
-                tvPointer.setWidth(20);
+                tvPointer.setWidth(dpToPx(ctx, 16));
                 wireRow.addView(tvPointer);
 
+                // Thick insulated colored wire line
                 View wireLine = new View(ctx);
-                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(100, 8);
-                lp.setMargins(4, 0, 4, 0);
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dpToPx(ctx, 74), dpToPx(ctx, 8));
+                lp.setMargins(dpToPx(ctx, 4), 0, dpToPx(ctx, 6), 0);
                 wireLine.setLayoutParams(lp);
 
                 int wireColor = Color.WHITE;
                 if ("rojo".equals(colorName)) wireColor = Color.parseColor("#EF4444");
                 else if ("azul".equals(colorName)) wireColor = Color.parseColor("#3B82F6");
-                else if ("amarillo".equals(colorName)) wireColor = Color.parseColor("#EAB308");
+                else if ("amarillo".equals(colorName)) wireColor = Color.parseColor("#FACC15");
                 else if ("negro".equals(colorName)) wireColor = Color.parseColor("#475569");
-                wireLine.setBackgroundColor(wireColor);
+
+                GradientDrawable wireG = new GradientDrawable();
+                wireG.setShape(GradientDrawable.RECTANGLE);
+                wireG.setColor(wireColor);
+                wireG.setCornerRadius(dpToPx(ctx, 4));
+                wireG.setStroke(1, Color.parseColor("#64748B"));
+                wireLine.setBackground(wireG);
                 wireRow.addView(wireLine);
 
+                // Wire text label
                 TextView tvLabel = new TextView(ctx);
-                tvLabel.setText(String.format(Locale.getDefault(), "#%d %s", i + 1, colorName.toUpperCase()));
-                tvLabel.setTextColor(i == selectedWireIndex ? Color.parseColor("#00E5FF") : Color.parseColor("#94A3B8"));
+                tvLabel.setText(String.format(Locale.getDefault(), "#%d %s", wireIdx + 1, colorName.toUpperCase()));
+                tvLabel.setTextColor(wireIdx == selectedWireIndex ? Color.parseColor("#00E5FF") : Color.parseColor("#94A3B8"));
                 tvLabel.setTextSize(9f);
-                tvLabel.setTypeface(i == selectedWireIndex ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
+                tvLabel.setTypeface(wireIdx == selectedWireIndex ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
                 wireRow.addView(tvLabel);
 
                 layout.addView(wireRow);
             }
         }
 
-        Button btnCut = new Button(ctx);
-        btnCut.setText("✂ CORTAR CABLE");
-        btnCut.setTextSize(9f);
-        btnCut.setTextColor(Color.parseColor("#EF4444"));
+        // Visible, properly sized "CORTAR CABLE" button
+        TextView btnCut = new TextView(ctx);
+        btnCut.setText("✂ CORTAR SELECCIÓN");
+        btnCut.setTextSize(10f);
+        btnCut.setTypeface(Typeface.DEFAULT_BOLD);
+        btnCut.setTextColor(Color.WHITE);
+        btnCut.setGravity(Gravity.CENTER);
         btnCut.setBackgroundResource(R.drawable.btn_round_red);
+        btnCut.setClickable(true);
+        btnCut.setFocusable(true);
+
         LinearLayout.LayoutParams btnLp = new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.WRAP_CONTENT, 36
+            dpToPx(ctx, 140), dpToPx(ctx, 28)
         );
-        btnLp.setMargins(0, 2, 0, 0);
+        btnLp.setMargins(0, dpToPx(ctx, 4), 0, 0);
         btnCut.setLayoutParams(btnLp);
         btnCut.setOnClickListener(v -> {
-            if (listener != null) listener.onCut(selectedWireIndex);
+            if (cutListener != null) cutListener.onCut(selectedWireIndex);
         });
         layout.addView(btnCut);
 
@@ -184,7 +225,7 @@ public class ModuleViews {
         LinearLayout layout = new LinearLayout(ctx);
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setGravity(Gravity.CENTER_HORIZONTAL);
-        layout.setPadding(4, 0, 4, 4);
+        layout.setPadding(dpToPx(ctx, 4), 0, dpToPx(ctx, 4), dpToPx(ctx, 4));
 
         if (mod.optBoolean("solved")) {
             layout.addView(createSolvedBadge(ctx));
@@ -195,52 +236,75 @@ public class ModuleViews {
         String label = mod.optString("label", "Presionar").toUpperCase();
         String stripColor = mod.optString("stripColor", "azul").toLowerCase();
 
+        // Neon Glow Strip Header (visible when holding)
         final TextView tvStrip = new TextView(ctx);
-        tvStrip.setText("FRANJA: " + stripColor.toUpperCase());
-        tvStrip.setTextSize(9f);
+        tvStrip.setText("⚡ FRANJA: " + stripColor.toUpperCase() + " ⚡");
+        tvStrip.setTextSize(10f);
         tvStrip.setTypeface(Typeface.DEFAULT_BOLD);
         tvStrip.setGravity(Gravity.CENTER);
         tvStrip.setVisibility(View.INVISIBLE);
-        tvStrip.setPadding(8, 1, 8, 1);
+        tvStrip.setPadding(dpToPx(ctx, 8), dpToPx(ctx, 2), dpToPx(ctx, 8), dpToPx(ctx, 2));
 
-        int stripBg = Color.BLUE;
-        if ("rojo".equals(stripColor)) stripBg = Color.parseColor("#EF4444");
-        else if ("amarillo".equals(stripColor)) stripBg = Color.parseColor("#EAB308");
-        else if ("blanco".equals(stripColor)) stripBg = Color.WHITE;
-        else if ("azul".equals(stripColor)) stripBg = Color.parseColor("#2563EB");
+        int tempStrip = Color.BLUE;
+        if ("rojo".equals(stripColor)) tempStrip = Color.parseColor("#EF4444");
+        else if ("amarillo".equals(stripColor)) tempStrip = Color.parseColor("#FACC15");
+        else if ("blanco".equals(stripColor)) tempStrip = Color.WHITE;
+        else if ("azul".equals(stripColor)) tempStrip = Color.parseColor("#38BDF8");
+        final int stripBg = tempStrip;
         tvStrip.setTextColor(stripBg);
         layout.addView(tvStrip);
 
-        final Button btnBig = new Button(ctx);
-        btnBig.setText(label);
-        btnBig.setTextSize(12f);
-        btnBig.setTypeface(Typeface.DEFAULT_BOLD);
-        btnBig.setTextColor(Color.WHITE);
+        // Circular arcade button container
+        FrameLayout buttonFrame = new FrameLayout(ctx);
+        int btnDiameter = dpToPx(ctx, 84);
+        LinearLayout.LayoutParams frameLp = new LinearLayout.LayoutParams(btnDiameter, btnDiameter);
+        frameLp.setMargins(0, dpToPx(ctx, 2), 0, dpToPx(ctx, 2));
+        buttonFrame.setLayoutParams(frameLp);
 
-        int btnColor = Color.parseColor("#EF4444");
-        if ("azul".equals(color)) btnColor = Color.parseColor("#2563EB");
-        else if ("amarillo".equals(color)) btnColor = Color.parseColor("#D97706");
-        else if ("blanco".equals(color)) {
-            btnColor = Color.parseColor("#E2E8F0");
-            btnBig.setTextColor(Color.BLACK);
+        // Circular background drawable
+        int btnBgColor = Color.parseColor("#EF4444");
+        int btnTextColor = Color.WHITE;
+        if ("azul".equals(color)) btnBgColor = Color.parseColor("#2563EB");
+        else if ("amarillo".equals(color)) {
+            btnBgColor = Color.parseColor("#D97706");
+            btnTextColor = Color.WHITE;
+        } else if ("blanco".equals(color)) {
+            btnBgColor = Color.parseColor("#F1F5F9");
+            btnTextColor = Color.BLACK;
         }
-        btnBig.setBackgroundColor(btnColor);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(110, 80);
-        lp.setMargins(0, 2, 0, 2);
-        btnBig.setLayoutParams(lp);
+
+        GradientDrawable circularBg = new GradientDrawable();
+        circularBg.setShape(GradientDrawable.OVAL);
+        circularBg.setColor(btnBgColor);
+        circularBg.setStroke(dpToPx(ctx, 4), Color.parseColor("#FFFFFF"));
+        buttonFrame.setBackground(circularBg);
+
+        final TextView tvBtnLabel = new TextView(ctx);
+        tvBtnLabel.setText(label);
+        tvBtnLabel.setTextSize(13f);
+        tvBtnLabel.setTypeface(Typeface.DEFAULT_BOLD);
+        tvBtnLabel.setTextColor(btnTextColor);
+        tvBtnLabel.setGravity(Gravity.CENTER);
+        FrameLayout.LayoutParams textLp = new FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT
+        );
+        tvBtnLabel.setLayoutParams(textLp);
+        buttonFrame.addView(tvBtnLabel);
 
         final Handler handler = new Handler(Looper.getMainLooper());
         final boolean[] isHolding = {false};
         final Runnable holdRunnable = () -> {
             isHolding[0] = true;
             tvStrip.setVisibility(View.VISIBLE);
+            circularBg.setStroke(dpToPx(ctx, 5), stripBg);
+            buttonFrame.setBackground(circularBg);
         };
 
-        btnBig.setOnTouchListener((v, event) -> {
+        buttonFrame.setOnTouchListener((v, event) -> {
             switch (event.getAction()) {
                 case MotionEvent.ACTION_DOWN:
                     isHolding[0] = false;
-                    handler.postDelayed(holdRunnable, 400);
+                    handler.postDelayed(holdRunnable, 350);
                     return true;
                 case MotionEvent.ACTION_UP:
                 case MotionEvent.ACTION_CANCEL:
@@ -253,20 +317,15 @@ public class ModuleViews {
                         if (listener != null) listener.onAction("tap", 0);
                     }
                     tvStrip.setVisibility(View.INVISIBLE);
+                    circularBg.setStroke(dpToPx(ctx, 4), Color.parseColor("#FFFFFF"));
+                    buttonFrame.setBackground(circularBg);
                     isHolding[0] = false;
                     return true;
             }
             return false;
         });
 
-        layout.addView(btnBig);
-
-        TextView tvHint = new TextView(ctx);
-        tvHint.setText("Toca o mantén pulsado");
-        tvHint.setTextColor(Color.parseColor("#64748B"));
-        tvHint.setTextSize(8f);
-        layout.addView(tvHint);
-
+        layout.addView(buttonFrame);
         return layout;
     }
 
@@ -275,14 +334,17 @@ public class ModuleViews {
         LinearLayout layout = new LinearLayout(ctx);
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setGravity(Gravity.CENTER_HORIZONTAL);
-        layout.setPadding(4, 2, 4, 4);
+        layout.setPadding(dpToPx(ctx, 4), dpToPx(ctx, 2), dpToPx(ctx, 4), dpToPx(ctx, 4));
 
         if (mod.optBoolean("solved")) {
             layout.addView(createSolvedBadge(ctx));
             return layout;
         }
 
-        JSONArray symbols = mod.optJSONArray("symbols");
+        // Support both "displaySymbols" and "symbols"
+        JSONArray symbols = mod.optJSONArray("displaySymbols");
+        if (symbols == null) symbols = mod.optJSONArray("symbols");
+
         int currentStep = mod.optInt("currentStep", 0);
         JSONArray correctSeq = mod.optJSONArray("correctSequence");
 
@@ -294,16 +356,19 @@ public class ModuleViews {
             LinearLayout row2 = new LinearLayout(ctx);
             row2.setOrientation(LinearLayout.HORIZONTAL);
             row2.setGravity(Gravity.CENTER);
+            row2.setPadding(0, dpToPx(ctx, 4), 0, 0);
 
             for (int i = 0; i < 4; i++) {
                 final String sym = symbols.optString(i);
-                Button btn = new Button(ctx);
+
+                TextView btn = new TextView(ctx);
                 btn.setText(sym);
-                btn.setTextSize(16f);
-                btn.setTextColor(Color.parseColor("#F8FAFC"));
-                btn.setBackgroundResource(R.drawable.btn_round_dark);
-                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(54, 46);
-                lp.setMargins(3, 2, 3, 2);
+                btn.setTextSize(20f);
+                btn.setTypeface(Typeface.DEFAULT_BOLD);
+                btn.setGravity(Gravity.CENTER);
+
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dpToPx(ctx, 52), dpToPx(ctx, 42));
+                lp.setMargins(dpToPx(ctx, 3), 0, dpToPx(ctx, 3), 0);
                 btn.setLayoutParams(lp);
 
                 boolean isPressed = false;
@@ -315,11 +380,16 @@ public class ModuleViews {
                         }
                     }
                 }
+
                 if (isPressed) {
-                    btn.setTextColor(Color.parseColor("#10B981"));
                     btn.setText(sym + "✓");
-                    btn.setEnabled(false);
+                    btn.setTextColor(Color.parseColor("#10B981"));
+                    btn.setBackgroundResource(R.drawable.btn_round_green);
                 } else {
+                    btn.setTextColor(Color.parseColor("#F8FAFC"));
+                    btn.setBackgroundResource(R.drawable.btn_round_dark);
+                    btn.setClickable(true);
+                    btn.setFocusable(true);
                     btn.setOnClickListener(v -> {
                         if (listener != null) listener.onClick(sym);
                     });
@@ -336,11 +406,11 @@ public class ModuleViews {
     }
 
     // --- 4. SIMON SAYS MODULE ---
-    public static View buildSimonView(Context ctx, JSONObject mod, String flashColor, OnSimonClickListener listener) {
+    public static View buildSimonView(Context ctx, JSONObject mod, JSONObject edgework, String flashColor, OnSimonClickListener listener) {
         LinearLayout layout = new LinearLayout(ctx);
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setGravity(Gravity.CENTER_HORIZONTAL);
-        layout.setPadding(4, 0, 4, 4);
+        layout.setPadding(dpToPx(ctx, 4), 0, dpToPx(ctx, 4), dpToPx(ctx, 4));
 
         if (mod.optBoolean("solved")) {
             layout.addView(createSolvedBadge(ctx));
@@ -350,48 +420,76 @@ public class ModuleViews {
         int stage = mod.optInt("currentStage", 1);
         int total = mod.optJSONArray("sequence") != null ? mod.optJSONArray("sequence").length() : 3;
 
-        TextView tvStage = new TextView(ctx);
-        tvStage.setText(String.format(Locale.getDefault(), "ETAPA %d / %d", stage, total));
-        tvStage.setTextColor(Color.parseColor("#00E5FF"));
-        tvStage.setTextSize(9f);
-        tvStage.setTypeface(Typeface.DEFAULT_BOLD);
-        layout.addView(tvStage);
+        // Serial helper banner so the player knows what to report to the expert!
+        String serialText = "";
+        if (edgework != null) {
+            String sNum = edgework.optString("serialNumber", "");
+            boolean hasV = edgework.optBoolean("hasVowel", false);
+            serialText = String.format("SERIAL: %s (%s)", sNum, hasV ? "VOCAL" : "SIN VOCAL");
+        }
 
-        Button btnRed = createSimonButton(ctx, "ROJO", "#EF4444", "rojo".equalsIgnoreCase(flashColor), listener);
-        layout.addView(btnRed);
+        TextView tvHeader = new TextView(ctx);
+        tvHeader.setText(String.format("ETAPA %d / %d%s", stage, total, serialText.isEmpty() ? "" : "\n" + serialText));
+        tvHeader.setTextColor(Color.parseColor("#00E5FF"));
+        tvHeader.setTextSize(9f);
+        tvHeader.setTypeface(Typeface.DEFAULT_BOLD);
+        tvHeader.setGravity(Gravity.CENTER);
+        tvHeader.setPadding(0, 0, 0, dpToPx(ctx, 2));
+        layout.addView(tvHeader);
 
-        LinearLayout midRow = new LinearLayout(ctx);
-        midRow.setOrientation(LinearLayout.HORIZONTAL);
-        midRow.setGravity(Gravity.CENTER);
+        // 2x2 Quadrant layout: Top (Red | Blue), Bottom (Yellow | Green)
+        LinearLayout topRow = new LinearLayout(ctx);
+        topRow.setOrientation(LinearLayout.HORIZONTAL);
+        topRow.setGravity(Gravity.CENTER);
 
-        Button btnGreen = createSimonButton(ctx, "VERDE", "#10B981", "verde".equalsIgnoreCase(flashColor), listener);
-        Button btnBlue = createSimonButton(ctx, "AZUL", "#3B82F6", "azul".equalsIgnoreCase(flashColor), listener);
-        midRow.addView(btnGreen);
-        midRow.addView(btnBlue);
-        layout.addView(midRow);
+        TextView btnRed = createSimonArcButton(ctx, "ROJO", "#EF4444", "rojo".equalsIgnoreCase(flashColor), listener);
+        TextView btnBlue = createSimonArcButton(ctx, "AZUL", "#3B82F6", "azul".equalsIgnoreCase(flashColor), listener);
+        topRow.addView(btnRed);
+        topRow.addView(btnBlue);
+        layout.addView(topRow);
 
-        Button btnYellow = createSimonButton(ctx, "AMARILLO", "#FACC15", "amarillo".equalsIgnoreCase(flashColor), listener);
-        layout.addView(btnYellow);
+        LinearLayout botRow = new LinearLayout(ctx);
+        botRow.setOrientation(LinearLayout.HORIZONTAL);
+        botRow.setGravity(Gravity.CENTER);
+        botRow.setPadding(0, dpToPx(ctx, 3), 0, 0);
+
+        TextView btnYellow = createSimonArcButton(ctx, "AMARILLO", "#FACC15", "amarillo".equalsIgnoreCase(flashColor), listener);
+        TextView btnGreen = createSimonArcButton(ctx, "VERDE", "#10B981", "verde".equalsIgnoreCase(flashColor), listener);
+        botRow.addView(btnYellow);
+        botRow.addView(btnGreen);
+        layout.addView(botRow);
 
         return layout;
     }
 
-    private static Button createSimonButton(Context ctx, String label, String hexColor, boolean isFlashing, OnSimonClickListener listener) {
-        Button btn = new Button(ctx);
+    private static TextView createSimonArcButton(Context ctx, String label, String hexColor, boolean isFlashing, OnSimonClickListener listener) {
+        TextView btn = new TextView(ctx);
         btn.setText(label);
-        btn.setTextSize(9f);
+        btn.setTextSize(10f);
         btn.setTypeface(Typeface.DEFAULT_BOLD);
-        btn.setTextColor(Color.WHITE);
-        int baseColor = Color.parseColor(hexColor);
+        btn.setGravity(Gravity.CENTER);
+
+        GradientDrawable bg = new GradientDrawable();
+        bg.setShape(GradientDrawable.RECTANGLE);
+        bg.setCornerRadius(dpToPx(ctx, 10));
+
         if (isFlashing) {
-            btn.setBackgroundColor(Color.WHITE);
+            bg.setColor(Color.WHITE);
+            bg.setStroke(dpToPx(ctx, 2), Color.parseColor("#FBBF24"));
             btn.setTextColor(Color.BLACK);
         } else {
-            btn.setBackgroundColor(baseColor);
+            bg.setColor(Color.parseColor(hexColor));
+            bg.setStroke(1, Color.parseColor("#FFFFFF"));
+            btn.setTextColor(Color.WHITE);
         }
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(66, 36);
-        lp.setMargins(3, 1, 3, 1);
+        btn.setBackground(bg);
+
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dpToPx(ctx, 62), dpToPx(ctx, 38));
+        lp.setMargins(dpToPx(ctx, 2), 0, dpToPx(ctx, 2), 0);
         btn.setLayoutParams(lp);
+
+        btn.setClickable(true);
+        btn.setFocusable(true);
         btn.setOnClickListener(v -> {
             if (listener != null) listener.onClick(label.toLowerCase());
         });
@@ -403,7 +501,7 @@ public class ModuleViews {
         LinearLayout layout = new LinearLayout(ctx);
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setGravity(Gravity.CENTER_HORIZONTAL);
-        layout.setPadding(4, 0, 4, 4);
+        layout.setPadding(dpToPx(ctx, 4), 0, dpToPx(ctx, 4), dpToPx(ctx, 4));
 
         if (mod.optBoolean("solved")) {
             layout.addView(createSolvedBadge(ctx));
@@ -414,7 +512,8 @@ public class ModuleViews {
         JSONArray stages = mod.optJSONArray("stages");
         if (stages != null && stageIdx < stages.length()) {
             JSONObject stage = stages.optJSONObject(stageIdx);
-            int displayNum = stage.optInt("displayNumber", 1);
+            // In server bombGenerator: property is named "display"!
+            int displayNum = stage.optInt("display", stage.optInt("displayNumber", 1));
             JSONArray buttons = stage.optJSONArray("buttons");
 
             TextView tvStage = new TextView(ctx);
@@ -424,32 +523,48 @@ public class ModuleViews {
             tvStage.setTypeface(Typeface.DEFAULT_BOLD);
             layout.addView(tvStage);
 
+            // CRT Display screen for the large number
             TextView tvDisp = new TextView(ctx);
             tvDisp.setText(String.valueOf(displayNum));
             tvDisp.setTextColor(Color.parseColor("#FBBF24"));
-            tvDisp.setTextSize(20f);
+            tvDisp.setTextSize(26f);
             tvDisp.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
+            tvDisp.setGravity(Gravity.CENTER);
             tvDisp.setBackgroundResource(R.drawable.btn_round_dark);
-            tvDisp.setPadding(14, 2, 14, 2);
+            tvDisp.setWidth(dpToPx(ctx, 58));
+            tvDisp.setHeight(dpToPx(ctx, 36));
             layout.addView(tvDisp);
 
             if (buttons != null) {
                 LinearLayout row = new LinearLayout(ctx);
                 row.setOrientation(LinearLayout.HORIZONTAL);
                 row.setGravity(Gravity.CENTER);
-                row.setPadding(0, 4, 0, 0);
+                row.setPadding(0, dpToPx(ctx, 4), 0, 0);
 
                 for (int i = 0; i < buttons.length(); i++) {
                     final int idx = i;
                     final int val = buttons.optInt(i);
-                    Button b = new Button(ctx);
+
+                    TextView b = new TextView(ctx);
                     b.setText(String.valueOf(val));
-                    b.setTextSize(12f);
-                    b.setTextColor(idx == selectedIndex ? Color.parseColor("#00E5FF") : Color.WHITE);
-                    b.setBackgroundResource(idx == selectedIndex ? R.drawable.btn_round_cyan : R.drawable.btn_round_dark);
-                    LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(38, 38);
-                    lp.setMargins(2, 2, 2, 2);
+                    b.setTextSize(15f);
+                    b.setTypeface(Typeface.DEFAULT_BOLD);
+                    b.setGravity(Gravity.CENTER);
+
+                    if (idx == selectedIndex) {
+                        b.setTextColor(Color.parseColor("#00E5FF"));
+                        b.setBackgroundResource(R.drawable.btn_round_cyan);
+                    } else {
+                        b.setTextColor(Color.WHITE);
+                        b.setBackgroundResource(R.drawable.btn_round_dark);
+                    }
+
+                    LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dpToPx(ctx, 34), dpToPx(ctx, 34));
+                    lp.setMargins(dpToPx(ctx, 2), 0, dpToPx(ctx, 2), 0);
                     b.setLayoutParams(lp);
+
+                    b.setClickable(true);
+                    b.setFocusable(true);
                     b.setOnClickListener(v -> {
                         if (listener != null) listener.onClick(idx, val);
                     });
@@ -463,11 +578,13 @@ public class ModuleViews {
     }
 
     // --- 6. PASSWORDS MODULE ---
-    public static View buildPasswordsView(Context ctx, JSONObject mod, int activeCol, int[] colIndices, OnPasswordSubmitListener listener) {
+    public static View buildPasswordsView(Context ctx, JSONObject mod, int activeCol, int[] colIndices,
+                                          OnPasswordColSelectListener colSelectListener,
+                                          OnPasswordSubmitListener submitListener) {
         LinearLayout layout = new LinearLayout(ctx);
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setGravity(Gravity.CENTER_HORIZONTAL);
-        layout.setPadding(4, 0, 4, 4);
+        layout.setPadding(dpToPx(ctx, 4), 0, dpToPx(ctx, 4), dpToPx(ctx, 4));
 
         if (mod.optBoolean("solved")) {
             layout.addView(createSolvedBadge(ctx));
@@ -492,38 +609,71 @@ public class ModuleViews {
                 }
                 currentWord.append(letter);
 
-                Button btnCol = new Button(ctx);
-                btnCol.setText(letter.toUpperCase());
-                btnCol.setTextSize(12f);
-                btnCol.setTextColor(i == activeCol ? Color.parseColor("#00E5FF") : Color.WHITE);
-                btnCol.setBackgroundResource(i == activeCol ? R.drawable.btn_round_cyan : R.drawable.btn_round_dark);
-                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(32, 40);
-                lp.setMargins(1, 1, 1, 1);
-                btnCol.setLayoutParams(lp);
-                row.addView(btnCol);
+                LinearLayout colBox = new LinearLayout(ctx);
+                colBox.setOrientation(LinearLayout.VERTICAL);
+                colBox.setGravity(Gravity.CENTER);
+                colBox.setClickable(true);
+                colBox.setFocusable(true);
+                colBox.setOnClickListener(v -> {
+                    if (colSelectListener != null) colSelectListener.onColSelect(colIdx);
+                });
+
+                if (i == activeCol) {
+                    colBox.setBackgroundResource(R.drawable.btn_round_cyan);
+                } else {
+                    colBox.setBackgroundResource(R.drawable.btn_round_dark);
+                }
+
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dpToPx(ctx, 28), dpToPx(ctx, 44));
+                lp.setMargins(dpToPx(ctx, 1), 0, dpToPx(ctx, 1), 0);
+                colBox.setLayoutParams(lp);
+
+                TextView tvArrowUp = new TextView(ctx);
+                tvArrowUp.setText("▲");
+                tvArrowUp.setTextSize(7f);
+                tvArrowUp.setTextColor(i == activeCol ? Color.parseColor("#00E5FF") : Color.parseColor("#64748B"));
+                tvArrowUp.setGravity(Gravity.CENTER);
+                colBox.addView(tvArrowUp);
+
+                TextView tvLetter = new TextView(ctx);
+                tvLetter.setText(letter.toUpperCase());
+                tvLetter.setTextSize(15f);
+                tvLetter.setTypeface(Typeface.DEFAULT_BOLD);
+                tvLetter.setTextColor(i == activeCol ? Color.parseColor("#00E5FF") : Color.WHITE);
+                tvLetter.setGravity(Gravity.CENTER);
+                colBox.addView(tvLetter);
+
+                TextView tvArrowDown = new TextView(ctx);
+                tvArrowDown.setText("▼");
+                tvArrowDown.setTextSize(7f);
+                tvArrowDown.setTextColor(i == activeCol ? Color.parseColor("#00E5FF") : Color.parseColor("#64748B"));
+                tvArrowDown.setGravity(Gravity.CENTER);
+                colBox.addView(tvArrowDown);
+
+                row.addView(colBox);
             }
             layout.addView(row);
         }
 
-        TextView tvHint = new TextView(ctx);
-        tvHint.setText("Bisel cambia letra");
-        tvHint.setTextColor(Color.parseColor("#64748B"));
-        tvHint.setTextSize(8f);
-        tvHint.setPadding(0, 2, 0, 2);
-        layout.addView(tvHint);
-
-        Button btnSubmit = new Button(ctx);
-        btnSubmit.setText("✔ INGRESAR");
-        btnSubmit.setTextSize(10f);
-        btnSubmit.setTextColor(Color.parseColor("#10B981"));
-        btnSubmit.setBackgroundResource(R.drawable.btn_round_green);
-        LinearLayout.LayoutParams btnLp = new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.WRAP_CONTENT, 50
-        );
-        btnSubmit.setLayoutParams(btnLp);
+        // Prominent Submit button showing current word
+        TextView btnSubmit = new TextView(ctx);
         final String wordToSend = currentWord.toString();
+        btnSubmit.setText(String.format("✔ INGRESAR: %s", wordToSend.toUpperCase()));
+        btnSubmit.setTextSize(10f);
+        btnSubmit.setTypeface(Typeface.DEFAULT_BOLD);
+        btnSubmit.setTextColor(Color.WHITE);
+        btnSubmit.setGravity(Gravity.CENTER);
+        btnSubmit.setBackgroundResource(R.drawable.btn_round_green);
+        btnSubmit.setClickable(true);
+        btnSubmit.setFocusable(true);
+
+        LinearLayout.LayoutParams btnLp = new LinearLayout.LayoutParams(
+            dpToPx(ctx, 140), dpToPx(ctx, 28)
+        );
+        btnLp.setMargins(0, dpToPx(ctx, 4), 0, 0);
+        btnSubmit.setLayoutParams(btnLp);
         btnSubmit.setOnClickListener(v -> {
-            if (listener != null) listener.onSubmit(wordToSend);
+            if (submitListener != null) submitListener.onSubmit(wordToSend);
         });
         layout.addView(btnSubmit);
 
@@ -536,7 +686,8 @@ public class ModuleViews {
         tv.setTextColor(Color.parseColor("#10B981"));
         tv.setTextSize(14f);
         tv.setTypeface(Typeface.DEFAULT_BOLD);
-        tv.setPadding(0, 16, 0, 16);
+        tv.setGravity(Gravity.CENTER);
+        tv.setPadding(0, dpToPx(ctx, 16), 0, dpToPx(ctx, 16));
         return tv;
     }
 }
