@@ -669,35 +669,23 @@ function generateBomb(difficulty = 'normal') {
   if (difficulty === 'facil' || difficulty === 'easy') moduleCount = 3;
   if (difficulty === 'experto' || difficulty === 'expert') moduleCount = 8;
 
-  // Pool of regular defusable modules
+  // Pool of the 6 selected modules (wires, the_button, keypads, simon_says, memory, passwords)
   const regularGenerators = [
     () => generateWiresModule(edgework),
     () => generateButtonModule(edgework),
     () => generateKeypadsModule(),
     () => generateSimonSaysModule(edgework),
-    () => generateWhosOnFirstModule(),
     () => generateMemoryModule(),
-    () => generateMorseCodeModule(),
     () => generatePasswordsModule()
   ];
 
   const shuffledGenerators = shuffle(regularGenerators);
   const selectedModules = [];
 
-  // Pick (moduleCount - needyCount) defusable modules
-  const needyCount = difficulty === 'facil' ? 0 : (difficulty === 'experto' ? 2 : 1);
-  const regularCount = Math.min(moduleCount - needyCount, shuffledGenerators.length);
-
-  for (let i = 0; i < regularCount; i++) {
+  // Pick moduleCount defusable modules (no needy modules for clean gameplay)
+  const countToPick = Math.min(moduleCount, shuffledGenerators.length);
+  for (let i = 0; i < countToPick; i++) {
     selectedModules.push(shuffledGenerators[i]());
-  }
-
-  // Needy modules
-  if (needyCount >= 1) {
-    selectedModules.push(generateNeedyKnobModule());
-  }
-  if (needyCount >= 2) {
-    selectedModules.push(generateNeedyVentCapacitorModule());
   }
 
   const baseTimeSeconds = difficulty === 'facil' ? 300 : (difficulty === 'experto' ? 420 : 360);

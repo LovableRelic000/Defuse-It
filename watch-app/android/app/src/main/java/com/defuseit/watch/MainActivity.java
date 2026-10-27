@@ -68,13 +68,9 @@ public class MainActivity extends AppCompatActivity {
 
     // Module internal UI states
     private int selectedWireIndex = 0;
-    private float morseFrequency = 3.545f;
-    private boolean isMorseLightOn = false;
     private int passwordActiveCol = 0;
     private int[] passwordColIndices = new int[]{0, 0, 0, 0, 0};
-    private int whosSelectedBtn = 0;
     private int memorySelectedBtn = 0;
-    private String knobCurrentDir = "ARRIBA";
 
     // Views in Game HUD
     private TextView tvGameTimer;
@@ -82,10 +78,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView tvBezelMode;
     private TextView tvModuleTitle;
     private FrameLayout moduleContainer;
-
-    // Morse loop handler
-    private final Handler morseHandler = new Handler(Looper.getMainLooper());
-    private Runnable morseRunnable = null;
+    private FuseRingView fuseRingView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -103,7 +96,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        stopMorseLoop();
         if (mSocket != null) {
             mSocket.disconnect();
             mSocket.off();
@@ -177,17 +169,6 @@ public class MainActivity extends AppCompatActivity {
                 renderActiveModuleView();
                 break;
             }
-            case "morse_code": {
-                // Adjust frequency in steps of 0.005 MHz between 3.500 and 3.600
-                morseFrequency = Math.round((morseFrequency + direction * 0.005f) * 1000f) / 1000f;
-                if (morseFrequency < 3.500f) morseFrequency = 3.500f;
-                if (morseFrequency > 3.600f) morseFrequency = 3.600f;
-
-                // Transmit live telemetry to phone
-                emitTelemetry();
-                renderActiveModuleView();
-                break;
-            }
             case "passwords": {
                 JSONArray cols = mod.optJSONArray("columns");
                 if (cols != null && passwordActiveCol < cols.length()) {
@@ -198,36 +179,6 @@ public class MainActivity extends AppCompatActivity {
                 }
                 break;
             }
-            case "needy_knob": {
-                String[] dirs = new String[]{"ARRIBA", "DERECHA", "ABAJO", "IZQUIERDA"};
-                int curIdx = 0;
-                for (int i = 0; i < dirs.length; i++) {
-                    if (dirs[i].equals(knobCurrentDir)) { curIdx = i; break; }
-                }
-                curIdx = (curIdx + direction + dirs.length) % dirs.length;
-                knobCurrentDir = dirs[curIdx];
-
-                emitTelemetry();
-                renderActiveModuleView();
-                break;
-            }
-            case "needy_vent_capacitor": {
-                // Discharging capacitor
-                if (mSocket != null && mSocket.connected()) {
-                    try {
-                        JSONObject act = new JSONObject();
-                        act.put("action", "discharge");
-                        act.put("dischargeAmount", 20);
-                        mSocket.emit("action:vent_capacitor", act);
-                    } catch (JSONException ignored) {}
-                }
-                break;
-            }
-            case "whos_on_first": {
-                whosSelectedBtn = (whosSelectedBtn + direction + 6) % 6;
-                renderActiveModuleView();
-                break;
-            }
             case "memory": {
                 memorySelectedBtn = (memorySelectedBtn + direction + 4) % 4;
                 renderActiveModuleView();
@@ -236,22 +187,9 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void emitTelemetry() {
-        if (mSocket != null && mSocket.connected()) {
-            try {
-                JSONObject telem = new JSONObject();
-                telem.put("morseFrequency", morseFrequency);
-                telem.put("knobDirection", knobCurrentDir);
-                telem.put("rotaryDirection", bezelModeAction ? "action" : "nav");
-                mSocket.emit("watch:telemetry", telem);
-            } catch (JSONException ignored) {}
-        }
-    }
-
     // --- SCREEN: CONNECT / ROTARY PIN PICKER ---
     private void showConnectScreen() {
         currentScreen = ScreenState.CONNECT;
-        stopMorseLoop();
         rootContainer.removeAllViews();
 
         View v = LayoutInflater.from(this).inflate(R.layout.view_connect, rootContainer, false);
@@ -458,7 +396,6 @@ public class MainActivity extends AppCompatActivity {
     // --- SCREEN: LOBBY ---
     private void showLobbyScreen() {
         currentScreen = ScreenState.LOBBY;
-        stopMorseLoop();
         rootContainer.removeAllViews();
 
         View v = LayoutInflater.from(this).inflate(R.layout.view_lobby, rootContainer, false);
@@ -498,6 +435,7 @@ public class MainActivity extends AppCompatActivity {
         tvBezelMode = v.findViewById(R.id.tvBezelMode);
         tvModuleTitle = v.findViewById(R.id.tvModuleTitle);
         moduleContainer = v.findViewById(R.id.moduleContainer);
+        fuseRingView = v.findViewById(R.id.fuseRingView);
 
         // Mode Pill Toggle Click
         tvBezelMode.setOnClickListener(view -> {
@@ -567,15 +505,20 @@ public class MainActivity extends AppCompatActivity {
         long totalSeconds = timeRemainingMs / 1000;
         long minutes = totalSeconds / 60;
         long seconds = totalSeconds % 60;
-        long tenths = (timeRemainingMs % 1000) / 100;
 
-        tvGameTimer.setText(String.format(Locale.getDefault(), "%02d:%02d.%d", minutes, seconds, tenths));
+        tvGameTimer.setText(String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds));
         if (timeRemainingMs < 60000) {
-            tvGameTimer.setTextColor(Color.parseColor("#EF4444")); // Red flash
-        } else if (timeRemainingMs < 120000) {
-            tvGameTimer.setTextColor(Color.parseColor("#FBBF24")); // Amber
+            tvGameTimer.setTextColor(Color.parseColor("#EF4444")); // Red
         } else {
-            tvGameTimer.setTextColor(Color.parseColor("#FBBF24"));
+            tvGameTimer.setTextColor(Color.parseColor("#FBBF24")); // Amber
+        }
+
+        // Update Cartoon Bomb Fuse Ring Progress
+        if (fuseRingView != null) {
+            long baseTimeMs = currentBombState != null ? (long) (currentBombState.optDouble("baseTimeSeconds", 300) * 1000) : 300000;
+            float progress = (float) timeRemainingMs / (float) baseTimeMs;
+            fuseRingView.setProgress(progress);
+            fuseRingView.setStrikes(strikes);
         }
     }
 
@@ -583,8 +526,8 @@ public class MainActivity extends AppCompatActivity {
         if (tvGameStrikes == null) return;
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < maxStrikes; i++) {
-            if (i < strikes) sb.append("[X] ");
-            else sb.append("[ ] ");
+            if (i < strikes) sb.append("✕ ");
+            else sb.append("○ ");
         }
         tvGameStrikes.setText(sb.toString().trim());
         tvGameStrikes.setTextColor(strikes > 0 ? Color.parseColor("#EF4444") : Color.parseColor("#64748B"));
@@ -597,14 +540,12 @@ public class MainActivity extends AppCompatActivity {
         return null;
     }
 
-    // --- RENDER ACTIVE MODULE IN CONTAINER ---
+    // --- RENDER ACTIVE MODULE IN CONTAINER (CORE 6 MODULES) ---
     private void renderActiveModuleView() {
         if (moduleContainer == null) return;
-        stopMorseLoop();
         moduleContainer.removeAllViews();
 
         if (currentModuleIndex == -1) {
-            // EDGEWORK VIEW
             View v = ModuleViews.buildEdgeworkView(this, edgeworkObj);
             moduleContainer.addView(v);
             return;
@@ -649,13 +590,6 @@ public class MainActivity extends AppCompatActivity {
                 moduleContainer.addView(v);
                 break;
             }
-            case "whos_on_first": {
-                View v = ModuleViews.buildWhosOnFirstView(this, mod, whosSelectedBtn, buttonIndex -> {
-                    emitModuleAction("action:whos_on_first", "buttonIndex", buttonIndex);
-                });
-                moduleContainer.addView(v);
-                break;
-            }
             case "memory": {
                 View v = ModuleViews.buildMemoryView(this, mod, memorySelectedBtn, (buttonIndex, label) -> {
                     try {
@@ -668,41 +602,9 @@ public class MainActivity extends AppCompatActivity {
                 moduleContainer.addView(v);
                 break;
             }
-            case "morse_code": {
-                View v = ModuleViews.buildMorseView(this, mod, morseFrequency, isMorseLightOn, freq -> {
-                    try {
-                        JSONObject act = new JSONObject();
-                        act.put("frequency", freq);
-                        mSocket.emit("action:morse", act);
-                    } catch (JSONException ignored) {}
-                });
-                moduleContainer.addView(v);
-                startMorseLoop(mod);
-                break;
-            }
             case "passwords": {
                 View v = ModuleViews.buildPasswordsView(this, mod, passwordActiveCol, passwordColIndices, word -> {
                     emitModuleAction("action:passwords", "word", word);
-                });
-                moduleContainer.addView(v);
-                break;
-            }
-            case "needy_knob": {
-                View v = ModuleViews.buildKnobView(this, mod, knobCurrentDir, direction -> {
-                    emitModuleAction("action:knob", "direction", direction);
-                });
-                moduleContainer.addView(v);
-                break;
-            }
-            case "needy_vent_capacitor": {
-                View v = ModuleViews.buildVentCapacitorView(this, mod, (action, answer, dischargeAmount) -> {
-                    try {
-                        JSONObject act = new JSONObject();
-                        act.put("action", action);
-                        act.put("answer", answer);
-                        act.put("dischargeAmount", dischargeAmount);
-                        mSocket.emit("action:vent_capacitor", act);
-                    } catch (JSONException ignored) {}
                 });
                 moduleContainer.addView(v);
                 break;
@@ -720,55 +622,9 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // --- MORSE BLINKING & HAPTIC LOOP ---
-    private void startMorseLoop(JSONObject mod) {
-        stopMorseLoop();
-        String code = mod.optString("morseCode", ".-");
-        final String sequence = code + "   "; // pause at end
-        final int[] index = {0};
-
-        morseRunnable = new Runnable() {
-            @Override
-            public void run() {
-                if (index[0] >= sequence.length()) index[0] = 0;
-                char c = sequence.charAt(index[0]++);
-
-                long duration = 250;
-                if (c == '.') {
-                    isMorseLightOn = true;
-                    duration = 200;
-                    triggerRotaryClickHaptic();
-                } else if (c == '-') {
-                    isMorseLightOn = true;
-                    duration = 500;
-                    triggerStrikeHaptic();
-                } else {
-                    isMorseLightOn = false;
-                    duration = 400;
-                }
-
-                if (moduleContainer != null && currentModuleIndex >= 0) {
-                    renderActiveModuleView();
-                }
-
-                morseHandler.postDelayed(this, duration);
-            }
-        };
-        morseHandler.post(morseRunnable);
-    }
-
-    private void stopMorseLoop() {
-        if (morseRunnable != null) {
-            morseHandler.removeCallbacks(morseRunnable);
-            morseRunnable = null;
-        }
-        isMorseLightOn = false;
-    }
-
     // --- SCREEN: EXPLODED ---
     private void showExplodedScreen(String reason) {
         currentScreen = ScreenState.EXPLODED;
-        stopMorseLoop();
         triggerLongDetonationHaptic();
         rootContainer.removeAllViews();
 
@@ -792,7 +648,6 @@ public class MainActivity extends AppCompatActivity {
     // --- SCREEN: DEFUSED (VICTORY) ---
     private void showDefusedScreen() {
         currentScreen = ScreenState.DEFUSED;
-        stopMorseLoop();
         triggerVictoryHaptic();
         rootContainer.removeAllViews();
 
