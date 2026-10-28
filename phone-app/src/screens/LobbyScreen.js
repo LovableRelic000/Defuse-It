@@ -10,7 +10,8 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  ScrollView
+  ScrollView,
+  NativeModules
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
@@ -18,14 +19,62 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function LobbyScreen({ onConnect, isConnecting }) {
   const insets = useSafeAreaInsets();
-  const [serverUrl, setServerUrl] = useState('http://192.168.1.50:3000');
+  const [serverUrl, setServerUrl] = useState('http://10.222.1.192:3000');
   const [roomPin, setRoomPin] = useState('');
   const [difficulty, setDifficulty] = useState('normal'); // 'facil', 'normal', 'experto'
+  const [isDetecting, setIsDetecting] = useState(false);
+  const [detectedStatus, setDetectedStatus] = useState(null);
+
+  const autoDetectServer = async (manual = false) => {
+    setIsDetecting(true);
+    setDetectedStatus('Buscando servidor en red...');
+    try {
+      const candidates = [];
+      const scriptURL = NativeModules.SourceCode?.scriptURL;
+      if (scriptURL) {
+        const match = scriptURL.match(/^https?:\/\/([^:/]+)/);
+        if (match && match[1]) {
+          candidates.push(`http://${match[1]}:3000`);
+        }
+      }
+      if (serverUrl && !candidates.includes(serverUrl)) {
+        candidates.push(serverUrl);
+      }
+      candidates.push('http://10.222.1.192:3000', 'http://10.0.0.34:3000', 'http://192.168.1.50:3000');
+
+      for (const target of candidates) {
+        try {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 800);
+          const res = await fetch(`${target}/api/discover`, { signal: controller.signal });
+          clearTimeout(timer);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.app === 'defuse-it') {
+              setServerUrl(target);
+              await AsyncStorage.setItem('DEFUSE_IT_SERVER_URL', target);
+              setDetectedStatus(`🟢 Servidor detectado: ${target}`);
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              setIsDetecting(false);
+              return;
+            }
+          }
+        } catch (e) {
+          // continue checking next target
+        }
+      }
+      setDetectedStatus(manual ? '❌ No se encontró servidor automáticamente' : null);
+    } catch (err) {
+      setDetectedStatus(manual ? '❌ Error buscando servidor' : null);
+    }
+    setIsDetecting(false);
+  };
 
   useEffect(() => {
-    // Load persisted server IP
+    // Load persisted server IP and try auto-detect
     AsyncStorage.getItem('DEFUSE_IT_SERVER_URL').then((saved) => {
       if (saved) setServerUrl(saved);
+      autoDetectServer(false);
     });
   }, []);
 
@@ -83,15 +132,37 @@ export default function LobbyScreen({ onConnect, isConnecting }) {
 
         {/* Server IP Card */}
         <View style={styles.card}>
-          <Text style={styles.cardLabel}>DIRECCIÓN IP DEL SERVIDOR</Text>
-          <Text style={styles.cardHelp}>
-            Revisa la terminal donde corre `/server` para ver la IP local
-          </Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={styles.cardLabel}>DIRECCIÓN IP DEL SERVIDOR</Text>
+            <TouchableOpacity
+              onPress={() => autoDetectServer(true)}
+              disabled={isDetecting}
+              style={styles.detectBtn}
+            >
+              <Text style={styles.detectBtnText}>
+                {isDetecting ? '🔍 BUSCANDO...' : '⚡ AUTO-DETECTAR'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {detectedStatus ? (
+            <Text style={{ fontSize: 11, color: detectedStatus.includes('🟢') ? '#00ffcc' : '#fbbf24', marginVertical: 4 }}>
+              {detectedStatus}
+            </Text>
+          ) : (
+            <Text style={styles.cardHelp}>
+              Detecta automáticamente o escribe la IP del servidor Node.js
+            </Text>
+          )}
+
           <TextInput
             style={styles.input}
             value={serverUrl}
-            onChangeText={setServerUrl}
-            placeholder="http://192.168.1.XX:3000"
+            onChangeText={(txt) => {
+              setServerUrl(txt);
+              setDetectedStatus(null);
+            }}
+            placeholder="http://10.222.1.192:3000"
             placeholderTextColor="#556"
             autoCapitalize="none"
             autoCorrect={false}
@@ -294,5 +365,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: 'bold',
     letterSpacing: 0.8,
+  },
+  detectBtn: {
+    backgroundColor: 'rgba(0, 255, 204, 0.12)',
+    borderWidth: 1,
+    borderColor: '#00ffcc',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  detectBtnText: {
+    color: '#00ffcc',
+    fontSize: 9,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
   }
 });

@@ -79,6 +79,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView tvModuleTitle;
     private FrameLayout moduleContainer;
     private FuseRingView fuseRingView;
+    private NetworkDiscovery networkDiscovery;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -89,6 +90,7 @@ public class MainActivity extends AppCompatActivity {
         rootContainer = findViewById(R.id.rootContainer);
         vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
         prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        networkDiscovery = new NetworkDiscovery(this);
 
         showConnectScreen();
     }
@@ -97,6 +99,9 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         stopSimonLoop();
+        if (networkDiscovery != null) {
+            networkDiscovery.stopDiscovery();
+        }
         if (mSocket != null) {
             mSocket.disconnect();
             mSocket.off();
@@ -209,11 +214,12 @@ public class MainActivity extends AppCompatActivity {
         tvPinDigits[2] = v.findViewById(R.id.tvPinDigit2);
         tvPinDigits[3] = v.findViewById(R.id.tvPinDigit3);
 
-        String savedIp = prefs.getString(KEY_SERVER_IP, DEFAULT_SERVER_IP);
-        tvServerIp.setText("IP: " + savedIp.replace("http://", ""));
-        tvServerIp.setOnClickListener(view -> showEditIpDialog(tvServerIp));
-
         updatePinDigitBoxes();
+
+        // Start auto-discovery in background immediately
+        startNetworkDiscovery(tvServerIp, tvStatus);
+
+        tvServerIp.setOnClickListener(view -> showServerOptionsDialog(tvServerIp, tvStatus));
 
         for (int i = 0; i < 4; i++) {
             final int idx = i;
@@ -244,6 +250,55 @@ public class MainActivity extends AppCompatActivity {
             currentPin = "" + pinDigits[0] + pinDigits[1] + pinDigits[2] + pinDigits[3];
             connectToServer(prefs.getString(KEY_SERVER_IP, DEFAULT_SERVER_IP), currentPin, tvStatus);
         });
+    }
+
+    private void startNetworkDiscovery(TextView tvServerIp, TextView tvStatus) {
+        if (networkDiscovery == null) {
+            networkDiscovery = new NetworkDiscovery(this);
+        }
+
+        networkDiscovery.startDiscovery(new NetworkDiscovery.DiscoveryCallback() {
+            @Override
+            public void onServerFound(String host, int port, String fullUrl) {
+                prefs.edit().putString(KEY_SERVER_IP, fullUrl).apply();
+                tvServerIp.setText("🟢 " + host + ":" + port);
+                tvServerIp.setTextColor(Color.parseColor("#10B981"));
+                tvStatus.setText("Servidor listo. Pulsa Conectar");
+                triggerRotaryClickHaptic();
+            }
+
+            @Override
+            public void onSearching(String message) {
+                tvServerIp.setText("🔍 " + message);
+                tvServerIp.setTextColor(Color.parseColor("#FBBF24"));
+            }
+
+            @Override
+            public void onSearchFailed() {
+                String savedIp = prefs.getString(KEY_SERVER_IP, DEFAULT_SERVER_IP);
+                tvServerIp.setText("IP: " + savedIp.replace("http://", ""));
+                tvServerIp.setTextColor(Color.parseColor("#94A3B8"));
+                tvStatus.setText("Toca IP para opciones");
+            }
+        });
+    }
+
+    private void showServerOptionsDialog(TextView tvServerIp, TextView tvStatus) {
+        String current = prefs.getString(KEY_SERVER_IP, DEFAULT_SERVER_IP);
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Servidor Defuse It!");
+        builder.setMessage(current.replace("http://", ""));
+
+        builder.setPositiveButton("Reescanear", (dialog, which) -> {
+            startNetworkDiscovery(tvServerIp, tvStatus);
+        });
+
+        builder.setNeutralButton("Manual", (dialog, which) -> {
+            showEditIpDialog(tvServerIp);
+        });
+
+        builder.setNegativeButton("Cerrar", null);
+        builder.show();
     }
 
     private void updatePinDigitBoxes() {

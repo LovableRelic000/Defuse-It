@@ -51,6 +51,15 @@ function generateRoomCode() {
 }
 
 // REST endpoints for health check and room status
+app.get('/api/discover', (req, res) => {
+  res.json({
+    app: 'defuse-it',
+    version: '1.0.0',
+    port: PORT,
+    ips: getLocalIpAddresses()
+  });
+});
+
 app.get('/', (req, res) => {
   res.json({
     status: 'online',
@@ -644,4 +653,37 @@ server.listen(PORT, '0.0.0.0', () => {
   });
   console.log(' (Introduce una de estas URLs o IP:PUERTO en tus apps)');
   console.log('====================================================\n');
+
+  // UDP Broadcast Beacon on port 41234
+  try {
+    const dgram = require('dgram');
+    const udpBeacon = dgram.createSocket({ type: 'udp4', reuseAddr: true });
+    const BROADCAST_PORT = 41234;
+
+    udpBeacon.bind(() => {
+      try {
+        udpBeacon.setBroadcast(true);
+        console.log(`📡 Beacon UDP de auto-descubrimiento activo en puerto ${BROADCAST_PORT}`);
+      } catch (e) {
+        console.warn('No se pudo activar broadcast en el socket UDP:', e.message);
+      }
+    });
+
+    setInterval(() => {
+      const currentIps = getLocalIpAddresses();
+      if (currentIps.length === 0) return;
+      const payload = Buffer.from(JSON.stringify({
+        app: 'defuse-it',
+        port: PORT,
+        ips: currentIps
+      }));
+      try {
+        udpBeacon.send(payload, 0, payload.length, BROADCAST_PORT, '255.255.255.255');
+      } catch (err) {
+        // Ignorar fallos de red esporádicos
+      }
+    }, 1500);
+  } catch (err) {
+    console.warn('Error inicializando beacon UDP:', err.message);
+  }
 });
