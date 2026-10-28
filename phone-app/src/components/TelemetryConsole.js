@@ -21,7 +21,7 @@ export default function TelemetryConsole({
   const [isPurging, setIsPurging] = useState(false);
 
   const handlePurge = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {}); } catch (e) {}
     setIsPurging(true);
     onPurgeThermal();
     setTimeout(() => {

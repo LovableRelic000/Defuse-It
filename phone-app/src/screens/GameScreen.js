@@ -29,7 +29,7 @@ export default function GameScreen({
   const [activeTab, setActiveTab] = useState('telemetry'); // 'telemetry' or 'manual'
 
   const handleTabChange = (tab) => {
-    Haptics.selectionAsync();
+    try { Haptics.selectionAsync().catch(() => {}); } catch (e) {}
     setActiveTab(tab);
   };
 
@@ -110,7 +110,7 @@ export default function GameScreen({
               <TouchableOpacity
                 style={styles.startCoopBtn}
                 onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                  try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {}); } catch (e) {}
                   onStartGame({ testMode: false });
                 }}
               >
@@ -129,7 +129,7 @@ export default function GameScreen({
                 <TouchableOpacity
                   style={styles.startSoloBtn}
                   onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {}); } catch (e) {}
                     onStartGame({ testMode: true });
                   }}
                 >

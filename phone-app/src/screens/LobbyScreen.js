@@ -54,7 +54,7 @@ export default function LobbyScreen({ onConnect, isConnecting }) {
               setServerUrl(target);
               await AsyncStorage.setItem('DEFUSE_IT_SERVER_URL', target);
               setDetectedStatus(`🟢 Servidor detectado: ${target}`);
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              safeHaptic(Haptics.ImpactFeedbackStyle.Light);
               setIsDetecting(false);
               return;
             }
@@ -68,6 +68,12 @@ export default function LobbyScreen({ onConnect, isConnecting }) {
       setDetectedStatus(manual ? '❌ Error buscando servidor' : null);
     }
     setIsDetecting(false);
+  };
+
+  const safeHaptic = (style = Haptics.ImpactFeedbackStyle.Medium) => {
+    try {
+      Haptics.impactAsync(style).catch(() => {});
+    } catch (e) {}
   };
 
   useEffect(() => {
@@ -88,7 +94,7 @@ export default function LobbyScreen({ onConnect, isConnecting }) {
       Alert.alert('Error', 'Por favor ingresa la dirección IP del servidor');
       return;
     }
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    safeHaptic(Haptics.ImpactFeedbackStyle.Medium);
     saveUrl(serverUrl);
     onConnect({
       url: serverUrl.trim(),
@@ -107,7 +113,7 @@ export default function LobbyScreen({ onConnect, isConnecting }) {
       Alert.alert('Error', 'El PIN de la sala debe tener 4 dígitos numéricos');
       return;
     }
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    safeHaptic(Haptics.ImpactFeedbackStyle.Medium);
     saveUrl(serverUrl);
     onConnect({
       url: serverUrl.trim(),
